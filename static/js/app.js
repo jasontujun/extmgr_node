@@ -18,9 +18,10 @@ $.ShanFox.getExtByPage = function(options, callback) {
         return;
     }
     $.ShanFox.loading = true;
+    $('#ext-loading').show();
     setTimeout(function(){
         $.ajax({
-            url: 'exts/getByPage',
+            url: 'ext/getAllByPage',
             type: 'GET',
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
@@ -42,7 +43,7 @@ $.ShanFox.getExtByPage = function(options, callback) {
                 }
                 if (data.exts) {
                     //if (options.offset == 0) {
-                    renderExts(data.exts);
+                    renderExtList(data.exts);
                     //}
                     options.offset = options.offset + loadedCount;
                     if(callback) {
@@ -66,19 +67,25 @@ $.ShanFox.getExtByPage = function(options, callback) {
             }
         });
     }, 3000);
+};
 
+$.ShanFox.getAllTags = function(options, callback) {
+    $.getJSON('ext/getAllTag', function(data) {
+        renderTagList(data);
+    })
 };
 
 // init
 $(function () {
     $.ShanFox.myOpt = {
         offset:0,
-        count:40
+        count:24
     };
     $.ShanFox.more = true;
     $.ShanFox.loading = false;
-    $('#ext-loading').show();
+    $.ShanFox.colCount = 4;
     $.ShanFox.getExtByPage($.ShanFox.myOpt);
+    $.ShanFox.getAllTags();
     registerScrollListener();
 });
 
@@ -89,22 +96,25 @@ function registerScrollListener() {
             console.log(new Date().toString(), 'scroll bottom');
             if ($.ShanFox.more && !$.ShanFox.loading) {
                 console.log(new Date().toString(), 'getMore data, offset:' + $.ShanFox.myOpt.offset);
-                $('#ext-loading').show();
                 $.ShanFox.getExtByPage($.ShanFox.myOpt);
             }
         }
     });
 }
 
-function renderExts(exts) {
+/**
+ * exts=[{id:asdf6asdfasa3sdfasdfasasdfasdfas, name:HelloWord, size:704, tag:['娱乐']}, ...]
+ * @param exts
+ */
+function renderExtList(exts) {
     if (!exts || exts.length <= 0) return;
 
     var content = '';
     var index = 0;
-    var rowCount = Math.ceil(exts.length / 4);
+    var rowCount = Math.ceil(exts.length / $.ShanFox.colCount);
     for(var row = 0; row < rowCount; row++) {
         content = content + '<div class="row">';
-        for(var i = 0; i < 4; i++) {
+        for(var i = 0; i < $.ShanFox.colCount; i++) {
             if (index >= exts.length) {
                 break;
             }
@@ -123,4 +133,26 @@ function renderExts(exts) {
     '</div></div>';
     $('#ext-loading').remove();
     $('#ext-list').append(content);
+}
+
+/**
+ * tags = {
+ *   '购物': 112,
+ *   '娱乐'：12344，
+ *   ...
+ * }
+ * @param tags
+ */
+function renderTagList(tags) {
+    if (!tags) return;
+
+    var content = '';
+    for(var tag in tags) {
+        content = content + '<li><a href="#"><i class="fa fa-circle-o text-yellow"></i>' + tag +
+        '<span class="badge bg-yellow" style="margin-left:10px">' + tags[tag] + '</span></a>' +
+        '<div style="position:absolute;right:10px;top:10px" class="pull-right">' +
+        '<button type="button" class="btn btn-box-tool">' +
+        '<i class="fa fa-times"></i></button></div></li>';
+    }
+    $('#tag-list').append(content);
 }
