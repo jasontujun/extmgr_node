@@ -7,16 +7,10 @@ dao.init(function(size) {
   console.log(new Date().toString(), 'init finish. data size is ' + size);
 });
 
-router.get('/getAllTag', function(req, res) {
-  dao.getAllTag(function(data) {
-    console.log(new Date().toString(), '@@@ getAllTag!return=' + data);
-    res.status(200).json(data);
-  })
-});
-
 router.get('/tagged/getAllByPage', function(req, res) {
   if (!req.query.offset || !req.query.count) {
     res.status(400).end();
+    return;
   }
   var offset = parseInt(req.query.offset);
   var count = parseInt(req.query.count);
@@ -28,7 +22,7 @@ router.get('/tagged/getAllByPage', function(req, res) {
     } else {
       result.count = data.length;
       result.exts = data;
-      console.log(new Date().toString(), '@@@ /tagged/getAllByPage!offset=' + offset +
+      console.log(new Date().toString(), '@@@ /ext/tagged/getAllByPage!offset=' + offset +
       ',count=' + count + ',tag=' + tag + ',return=' + data.length);
     }
     res.status(200).json(result);
@@ -39,6 +33,7 @@ router.get('/tagged/getAllByPage', function(req, res) {
 router.get('/raw/getAllByPage', function(req, res) {
   if (!req.query.offset || !req.query.count) {
     res.status(400).end();
+    return;
   }
   var offset = parseInt(req.query.offset);
   var count = parseInt(req.query.count);
@@ -49,10 +44,37 @@ router.get('/raw/getAllByPage', function(req, res) {
     } else {
       result.count = data.length;
       result.exts = data;
-      console.log(new Date().toString(), '@@@ /tagged/getAllByPage!offset=' + offset + ',count=' + count + ',return=' + data.length);
+      console.log(new Date().toString(), '@@@ /ext/tagged/getAllByPage!offset=' + offset +
+      ',count=' + count + ',return=' + data.length);
     }
     res.status(200).json(result);
   });
+});
+
+router.post('/addTag', function(req, res) {
+  var tag = req.body.tag;
+  var extId = req.body.ext;
+  if (!tag || !extId) {
+    res.status(400).end();
+    return;
+  }
+  dao.addTagForExt(tag, extId, function(result) {
+    console.log(new Date().toString(), '@@@ /ext/addTag!tag=' + tag + ',extId=' + extId + ',return=' + result);
+    res.status(200).json({result:result});
+  })
+});
+
+router.post('/removeTag', function(req, res) {
+  var tag = req.body.tag;
+  var extId = req.body.ext;
+  if (!tag || !extId) {
+    res.status(400).end();
+    return;
+  }
+  dao.removeTagForExt(tag, extId, function(result) {
+    console.log(new Date().toString(), '@@@ /ext/removeTag!tag=' + tag + ',extId=' + extId + ',return=' + result);
+    res.status(200).json({result:result});
+  })
 });
 
 module.exports = router;

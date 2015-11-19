@@ -7,6 +7,7 @@ var bodyParser = require('body-parser');
 
 var routes = require('./routes/index');
 var extension = require('./routes/extension');
+var tag = require('./routes/tag');
 
 var app = express();
 
@@ -27,6 +28,7 @@ app.use('/res', express.static('public'));
 // add self-defined routers
 app.use('/', routes);
 app.use('/ext', extension);
+app.use('/tag', tag);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
