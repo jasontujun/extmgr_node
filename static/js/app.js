@@ -5,9 +5,14 @@
 /**
  * UI Component. ExpandListView
  */
-function ExpandListView(colCount, httpFn) {
+function ExpandListView(parentSelector, loadingSelector,
+                        itemTemplate, loadingTemplate, colCount, httpFn) {
     this.more = true;
     this.loading = false;
+    this.parentSelector = parentSelector;
+    this.loadingSelector = loadingSelector;
+    this.itemTemplate = itemTemplate;
+    this.loadingTemplate = loadingTemplate;
     this.colCount = colCount;
     this.scrollListener = null;
     /**
@@ -15,128 +20,126 @@ function ExpandListView(colCount, httpFn) {
      */
     this.httpFn = httpFn;
 
-    if (typeof this.loadMore != 'function') {
-        /**
-         * Get extensions data by page.
-         */
-        ExpandListView.prototype.loadMore = function () {
-            if (!this.more || this.loading || !this.httpFn) {
-                return;
-            }
-            this.loading = true;
-            var that = this;
-            this.httpFn(function (data, hasMore) {
-                if (!hasMore) {
-                    that.more = false;
-                    $('#ext-loading-word').text('no more data');
-                }
-                if (data) {
-                    that.renderExtList(data);
-                }
-                $('#ext-loading').hide();
-                that.loading = false;
-            });
-        };
-        /**
-         * exts=[{id:asdf6asdfasa3sdfasdfasasdfasdfas, name:HelloWord, size:704, tag:['娱乐']}, ...]
-         * @param exts
-         */
-        ExpandListView.prototype.renderExtList = function (exts) {
-            if (!exts || exts.length <= 0) return;
-
-            var content = '';
-            var index = 0;
-            var rowCount = Math.ceil(exts.length / this.colCount);
-            for (var row = 0; row < rowCount; row++) {
-                content = content + '<div class="row">';
-                for (var i = 0; i < this.colCount; i++) {
-                    if (index >= exts.length) {
-                        break;
-                    }
-                    var ext = exts[index];
-                    content = content + '<div class="col-lg-3 col-xs-6"><div class="small-box bg-aqua">' +
-                    '<div class="inner"><h3>' + ext.size + '</h3><p>' + ext.name + '</p></div>' +
-                    '<div class="icon"><i class="ion ion-bag"></i></div>' +
-                    '<a href="#" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a></div></div>';
-                    index++;
-                }
-                content = content + '</div>';
-            }
-            content = content + '<div class="col-lg-12  col-xs-12" style="height:60px" id="ext-loading">' +
-            '<div style="position:absolute;top:50%;left:50%;font-size:30px">' +
-            '<i class="fa fa-refresh fa-spin"></i><small style="margin-left:30px" id="ext-loading-word">loading...</small>' +
-            '</div></div>';
-            $('#ext-loading').remove();// 必须是remove..
-            $('#ext-list').append(content);
-        };
-        ExpandListView.prototype.clearExtList = function () {
-            $('#ext-list').html('<div class="col-lg-12  col-xs-12" style="height:60px" id="ext-loading">' +
-            '<div style="position:absolute;top:50%;left:50%;font-size:30px">' +
-            '<i class="fa fa-refresh fa-spin"></i><small style="margin-left:30px" id="ext-loading-word">loading...</small>' +
-            '</div></div>');
-            $('#ext-loading').hide();
-        };
-        ExpandListView.prototype.registerScrollListener = function () {
-            if (this.scrollListener) return;
-            var that = this;
-            this.scrollListener = function () {
-                // When scroll at bottom, invoked loadMore() function.
-                if ($(window).scrollTop() + $(window).height() == $(document).height()) {
-                    console.log(new Date().toString(), 'scroll bottom');
-                    if (that.more && !that.loading && that.httpFn) {
-                        console.log(new Date().toString(), 'loadMore!');
-                        that.loadMore(that.httpFn);
-                    }
-                }
-            };
-            $(window).bind('scroll', this.scrollListener);
-        };
-        ExpandListView.prototype.unregisterScrollListener = function () {
-            if (!this.scrollListener) return;
-            $(window).unbind('scroll', this.scrollListener);
-            this.scrollListener = null;
+    /**
+     * Get extensions data by page.
+     */
+    this.loadMore = function () {
+        if (!this.more || this.loading || !this.httpFn) {
+            return;
         }
-    }
+        this.loading = true;
+        var loadingTip = $(this.loadingSelector);
+        if (!loadingTip) {// loadingTip not exist, add
+            $(this.parentSelector).html(ejs.renderFile(this.loadingTemplate, {word:'loading...'}, {cache:true}));
+        }
+        loadingTip.show();
+        var that = this;
+        this.httpFn(function (data, hasMore) {
+            if (!hasMore) {
+                that.more = false;
+                //$('#list-loading-word').text('no more data');
+            }
+            if (data) {
+                that.renderExtList(data);
+            }
+            var loadingTip2 = $(that.loadingSelector);
+            loadingTip2.hide();
+            that.loading = false;
+        });
+    };
+    /**
+     * exts=[{id:asdf6asdfasa3sdfasdfasasdfasdfas, name:HelloWord, size:704, tag:['娱乐']}, ...]
+     * @param exts
+     */
+    this.renderExtList = function (exts) {
+        if (!exts || exts.length <= 0) return;
+
+        var content = '';
+        var index = 0;
+        var rowCount = Math.ceil(exts.length / this.colCount);
+        for (var row = 0; row < rowCount; row++) {
+            content = content + '<div class="row">';
+            for (var i = 0; i < this.colCount; i++) {
+                if (index >= exts.length) {
+                    break;
+                }
+                var ext = exts[index];
+                var html = ejs.renderFile(this.itemTemplate, ext, {cache:true});
+                content = content + html;
+                index++;
+            }
+            content = content + '</div>';
+        }
+        if (this.more) {
+            var loadingTip = ejs.renderFile(this.loadingTemplate, {word:'loading...'}, {cache:true});
+            content = content + loadingTip;
+        }
+        $(this.loadingSelector).remove();// 必须是remove..
+        $(this.parentSelector).append(content);
+    };
+    this.clearExtList = function () {
+        $(this.parentSelector).html(ejs.renderFile(this.loadingTemplate, {word:'loading...'}, {cache:true}));
+        $(this.loadingSelector).hide();
+    };
+    this.registerScrollListener = function () {
+        if (this.scrollListener) return;
+        var that = this;
+        this.scrollListener = function () {
+            // When scroll at bottom, invoked loadMore() function.
+            if ($(window).scrollTop() + $(window).height() == $(document).height()) {
+                console.log(new Date().toString(), 'scroll bottom');
+                if (that.more && !that.loading && that.httpFn) {
+                    console.log(new Date().toString(), 'loadMore!');
+                    that.loadMore();
+                }
+            }
+        };
+        $(window).bind('scroll', this.scrollListener);
+    };
+    this.unregisterScrollListener = function () {
+        if (!this.scrollListener) return;
+        $(window).unbind('scroll', this.scrollListener);
+        this.scrollListener = null;
+    };
 }
 
 /**
  * UI Component. FullHeightIFrame
  */
-function FullHeightIFrame(frameId, wrapperHeight) {
-    this.frameId = frameId;
+function FullHeightIFrame(frameSelector, parentSelector, wrapperHeight) {
+    this.frameSelector = frameSelector;
+    this.parentSelector = parentSelector;
     this.wrapperHeight = wrapperHeight;
     this.resizeListener = null;
 
-    if (typeof this.setContent != 'function') {
-        FullHeightIFrame.prototype.setContent = function (url) {
-            var iframe = $(this.frameId);
+    this.setContent = function (url) {
+        var iframe = $(this.frameSelector);
+        if (iframe) {
+            iframe.attr('src', url);
+            // set height
+            var content_height = parseInt($(this.parentSelector).css('min-height'));
+            console.log(new Date().toString(), 'init! content_min_height:' + content_height);
+            iframe.attr('height', content_height - this.wrapperHeight);
+        }
+    };
+    this.registerResizeListener = function () {
+        if (this.resizeListener) return;
+        var that = this;
+        this.resizeListener = function () {
+            var iframe = $(that.frameSelector);
             if (iframe) {
-                iframe.attr('src', url);
-                // set height
-                var content_height = parseInt($('#page-right-content').css('min-height'));
-                console.log(new Date().toString(), 'init! content_min_height:' + content_height);
-                iframe.attr('height', content_height - this.wrapperHeight);
+                var content_height = parseInt($(that.parentSelector).css('min-height'));
+                console.log(new Date().toString(), 'resize! content_min_height:' + content_height);
+                iframe.attr('height', content_height - that.wrapperHeight);
             }
         };
-        FullHeightIFrame.prototype.registerResizeListener = function () {
-            if (this.resizeListener) return;
-            var that = this;
-            this.resizeListener = function () {
-                var iframe = $(that.frameId);
-                if (iframe) {
-                    var content_height = parseInt($('#page-right-content').css('min-height'));
-                    console.log(new Date().toString(), 'resize! content_min_height:' + content_height);
-                    iframe.attr('height', content_height - that.wrapperHeight);
-                }
-            };
-            $(window).bind('resize', this.resizeListener);
-        };
-        FullHeightIFrame.prototype.unregisterResizeListener = function () {
-            if (!this.resizeListener) return;
-            $(window).unbind('resize', this.resizeListener);
-            this.resizeListener = null;
-        };
-    }
+        $(window).bind('resize', this.resizeListener);
+    };
+    this.unregisterResizeListener = function () {
+        if (!this.resizeListener) return;
+        $(window).unbind('resize', this.resizeListener);
+        this.resizeListener = null;
+    };
 }
 
 
@@ -154,14 +157,18 @@ $.ShanFox = {
         currentTag: null,
         currentIndex : -1,
         currentMarket : null,
-        contentEjs : [
-            '<%- include(\'views/partials/content-tagged.ejs\') %>',
-            '<%- include(\'views/partials/content-raw.ejs\') %>',
-            '<%- include(\'views/partials/content-market.ejs\') %>'
-        ],
+        template : {
+            0: 'views/partials/content-tagged.ejs',
+            1: 'views/partials/content-raw.ejs',
+            2: 'views/partials/content-market.ejs',
+            extItem : 'views/partials/item-extension.ejs',
+            tagItem : 'views/partials/item-tag.ejs',
+            loading : 'views/partials/list-loading.ejs',
+            inputDialog : 'views/partials/dialog-input.ejs'
+        },
         taggedList : {},
         rawList : null,
-        marketIFrame : new FullHeightIFrame('#market-iframe', 40),
+        marketIFrame : new FullHeightIFrame('#market-iframe', '#page-right-content', 35),
         // ========================== ui function [start] ========================== //
         onClickRemoveTag : function(event, element, tag) {
             event.preventDefault();
@@ -232,13 +239,13 @@ $.ShanFox = {
 
             var content = '';
             for(var tag in tags) {
-                content = content + '<li class="box" onclick="$.ShanFox.ui.switchTag(\'' + tag + '\')">' +
-                '<a href="#"><i class="fa fa-circle-o text-yellow"></i>' + tag +
-                '<span class="badge bg-yellow" style="margin-left:10px">' + tags[tag] + '</span>' +
-                '</a>' +
-                '<div style="position:absolute;right:10px;top:10px" class="pull-right">' +
-                '<button type="button" class="btn btn-box-tool" onclick="$.ShanFox.ui.onClickRemoveTag(event,this,\'' + tag + '\')">' +
-                '<i class="fa fa-times"></i></button></div></li>';
+                var html = ejs.renderFile($.ShanFox.ui.template.tagItem, {
+                    selectClick : '$.ShanFox.ui.switchTag(\'' + tag + '\')',
+                    removeClick : '$.ShanFox.ui.onClickRemoveTag(event,this,\'' + tag + '\')',
+                    tag : tag,
+                    tagCount: tags[tag]
+                }, {cache:true});
+                content = content + html;
             }
             $('#tag-list').html(content);
         },
@@ -250,7 +257,9 @@ $.ShanFox = {
             } else {
                 $('#header-selected-tag').html(tag + '  <small>共' + $.ShanFox.data.tags[tag] + '个</small>');
                 if (!$.ShanFox.ui.taggedList[tag]) {// new taggList for [tag]
-                    $.ShanFox.ui.taggedList[tag] = new ExpandListView(4, $.ShanFox.ajax.extension.getTaggedByPage);
+                    $.ShanFox.ui.taggedList[tag] = new ExpandListView('#ext-list', '#list-loading',
+                        $.ShanFox.ui.template.extItem, $.ShanFox.ui.template.loading,
+                        4, $.ShanFox.ajax.extension.getTaggedByPage);
                 }
                 $.ShanFox.ui.taggedList[tag].registerScrollListener();
                 $.ShanFox.ui.taggedList[tag].clearExtList();
@@ -262,7 +271,7 @@ $.ShanFox = {
             }
         },
         switchContent : function(index, market) {
-            if (index < 0 || index >= $.ShanFox.ui.contentEjs.length) {
+            if (index < 0 || index >= $.ShanFox.ui.template.length) {
                 return;
             }
             if ($.ShanFox.ui.currentIndex === index) {
@@ -275,9 +284,8 @@ $.ShanFox = {
             $.ShanFox.ui.currentIndex = index;
 
             // ejs template to html
-            var html = ejs.render($.ShanFox.ui.contentEjs[index], $.ShanFox.data.ejs);
-            var pageRightContent = $('#page-right-content');
-            pageRightContent.html(html);
+            var html = ejs.renderFile($.ShanFox.ui.template[index], $.ShanFox.data.ejs, {cache:true});
+            $('#page-right-content').html(html);
 
             // refresh left menu
             $('#left-tagged').removeClass('active');
@@ -340,7 +348,9 @@ $.ShanFox = {
                 case 1:
                     $('#left-raw').addClass('active');
                     if (!$.ShanFox.ui.rawList) {// new rawList
-                        $.ShanFox.ui.rawList = new ExpandListView(4, $.ShanFox.ajax.extension.getRawByPage);
+                        $.ShanFox.ui.rawList = new ExpandListView('#ext-list', '#list-loading',
+                            $.ShanFox.ui.template.extItem, $.ShanFox.ui.template.loading,
+                            4, $.ShanFox.ajax.extension.getRawByPage);
                     }
                     if ($.ShanFox.data.rawExts.length == 0) {
                         $.ShanFox.ui.rawList.loadMore();
@@ -359,27 +369,8 @@ $.ShanFox = {
             }
         },
         showInputDialog : function(titile, message, btnTxt, okCallback, closeCallback) {
-            $(document.body).append('<div id="input-dialog" style="position: fixed;top:0;right:0;bottom:0;left:0;z-index:9999">' +
-            '<div style="position:fixed;top:0;right:0;bottom:0;left:0;background-color:#000;opacity: 0.5"></div>' +
-            '<div class="login-box">' +
-            '<div class="box box-primary box-solid">' +
-            '<div class="box-header with-border">' +
-            '<h3 class="box-title">' + titile + '</h3>' +
-            '<div class="box-tools pull-right">' +
-            '<button type="button" class="btn btn-box-tool" id="dialog-close-btn">' +
-            '<i class="fa fa-times"></i></button>' +
-            '</div>' +
-            '</div>' +
-            '<div class="box-body">' + message + '</div>' +
-            '<div class="box-footer">' +
-            '<div class="input-group">' +
-            '<input type="text" id="dialog-input" class="form-control">' +
-            '<span class="input-group-btn"><button class="btn btn-primary btn-flat" id="dialog-ok-btn">' + btnTxt + '</button></span>' +
-            '</div>' +
-            '</div>' +
-            '</div>' +
-            '</div>' +
-            '</div>');
+            $(document.body).append(ejs.renderFile($.ShanFox.ui.template.inputDialog,
+                {title:titile, message:message, btnTxt:btnTxt}, {cache:true}));
             $('#dialog-ok-btn').click(function(){
                 var input = $('#dialog-input').val();
                 $('#input-dialog').remove();// 必须是remove..

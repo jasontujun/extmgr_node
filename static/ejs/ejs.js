@@ -189,7 +189,7 @@ function handleCache(options, template) {
 
 function includeFile(path, options) {
   var opts = utils.shallowCopy({}, options);
-  opts.filename = path;// modified by jason
+  opts.filename = path;// modified by jasontujun
   if (!opts.filename) {
     throw new Error('`include` requires the \'filename\' option.');
   }
@@ -340,22 +340,17 @@ exports.render = function (template, data, opts) {
 };
 
 /**
- * Render an EJS file at the given `path` and callback `cb(err, str)`.
- *
- * If you would like to include options but not data, you need to explicitly
- * call this function with `data` being an empty object or `null`.
+ * Render an EJS file at the given `path`.
  *
  * @param {String}             path     path to the EJS file
  * @param {Object}            [data={}] template data
  * @param {Options}           [opts={}] compilation and rendering options
- * @param {RenderFileCallback} cb callback
  * @public
  */
 
-exports.renderFile = function () {
+exports.renderFile = function () {// modified by jasontujun. remove callback param.
   var args = Array.prototype.slice.call(arguments)
     , path = args.shift()
-    , cb = args.pop()
     , data = args.shift() || {}
     , opts = args.pop() || {}
     , result;
@@ -374,9 +369,8 @@ exports.renderFile = function () {
     result = handleCache(opts)(data);
   }
   catch(err) {
-    return cb(err);
   }
-  return cb(null, result);
+  return result;
 };
 
 /**
@@ -405,7 +399,7 @@ function Template(text, opts) {
   options.delimiter = opts.delimiter || exports.delimiter || _DEFAULT_DELIMITER;
   options._with = typeof opts._with != 'undefined' ? opts._with : true;
   options.context = opts.context;
-  options.cache = opts.cache || false;
+  options.cache = opts.cache || true;// modified by jasontujun. open cache!
   options.rmWhitespace = opts.rmWhitespace;
   this.opts = options;
 
@@ -892,6 +886,7 @@ exports.cache = {
 
 },{}],
   3:[function(require,module,exports){
+    // modified by jasontujun
     exports.readFileSync = function (path) {
       var xmlhttp = new XMLHttpRequest();
       xmlhttp.open("GET", path, false);
