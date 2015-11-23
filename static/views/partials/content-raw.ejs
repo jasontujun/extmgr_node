@@ -1,17 +1,40 @@
 
-<!-- Content Header (Page header) -->
-<section class="content-header">
-    <h1>
-        Page Header
-        <small>Optional description</small>
-    </h1>
-    <ol class="breadcrumb">
-        <li><a href="#"><i class="fa fa-dashboard"></i> Level</a></li>
-        <li class="active">Here</li>
-    </ol>
-</section>
-
 <!-- Main content -->
-<section class="content" id="ext-list">
+<section class="content">
+    <div class="row">
+        <!--tag list-->
+        <div class="col-md-2">
+            <div class="box box-solid collapsed-subbox">
+                <div class="box-header with-border">
+                    <h3 class="box-title">标签</h3>
+
+                    <div class="box-tools">
+                        <button type="button" class="btn btn-box-tool" id="tag-add-btn">
+                            <i class="fa fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-box-tool" data-widget="collapse">
+                            <i class="fa fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="box-body no-padding" style="display: block;">
+                    <div class="input-group box-body" style="display: none;">
+                        <input type="text" id="tag-input" placeholder="输入标签..." class="form-control">
+                        <span class="input-group-btn">
+                            <button class="btn btn-primary btn-flat" id="tag-add-confirm-btn">确定</button>
+                        </span>
+                    </div>
+                    <ul class="nav nav-pills nav-stacked" id="tag-list">
+                    </ul>
+                </div>
+                <!-- /.box-body -->
+            </div>
+        </div>
+        <!--extension list-->
+        <div class="col-md-10">
+            <section id="ext-list">
+            </section>
+        </div>
+    </div>
 </section>
 <!-- /.content -->
