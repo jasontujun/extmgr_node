@@ -4,24 +4,39 @@
 
 /**
  * UI Component. ExpandListView
+ * <pre>
+ *     opt = {
+ *          parentSelector:
+ *          loadingSelector:
+ *          itemTemplate:
+ *          loadingTemplate:
+ *          colCount: [number]
+ *          httpFn: [function(callbcak([Object]data, [boolean]hasMore))] the ajax function to get more data.
+ *          draggable: [boolean]
+ *          droppable: [boolean]
+ *          droppable_scope: [string]
+ *          droppable_drop: [function(event, ui, data)]
+ *     }
+ * </pre>
+ * @param opt
  */
-function ExpandListView(parentSelector, loadingSelector,
-                        itemTemplate, loadingTemplate, colCount, httpFn) {
+function ExpandListView(opt) {
+    opt = opt || {};
+    this.parentSelector = opt.parentSelector;
+    this.loadingSelector = opt.loadingSelector;
+    this.itemTemplate = opt.itemTemplate;
+    this.loadingTemplate = opt.loadingTemplate;
+    this.colCount = opt.colCount || 1;
+    this.httpFn = opt.httpFn;
+    this.draggable = opt.draggable;
+    this.droppable = opt.droppable;
+    this.droppable_scope = opt.droppable_scope;
+    this.droppable_drop = opt.droppable_drop;
+
     this.more = true;
     this.loading = false;
-    this.parentSelector = parentSelector;
-    this.loadingSelector = loadingSelector;
-    this.itemTemplate = itemTemplate;
-    this.loadingTemplate = loadingTemplate;
-    this.colCount = colCount;
     this.scrollListener = null;
-    /**
-     * the ajax function to get more data. function(callbcak(<Object>data, <boolean>hasMore))
-     */
-    this.httpFn = httpFn;
-    /**
-     * Get extensions data by page.
-     */
+
     this.loadMore = function () {
         if (!this.more || this.loading || !this.httpFn) {
             return;
@@ -39,33 +54,49 @@ function ExpandListView(parentSelector, loadingSelector,
                 //$('#list-loading-word').text('no more data');
             }
             if (data) {
-                that.renderExtList(data);
+                that.render(data);
             }
-            var loadingTip2 = $(that.loadingSelector);
-            loadingTip2.hide();
+            $(that.loadingSelector).hide();
             that.loading = false;
         });
     };
-
-    /**
-     * exts=[{id:asdf6asdfasa3sdfasdfasasdfasdfas, name:HelloWord, size:704, tag:['娱乐']}, ...]
-     * @param exts
-     */
-    this.renderExtList = function (exts) {
-        if (!exts || exts.length <= 0) return;
+    this.refreshItem = function(data) {
+        var itemView = $('#expandlist-item-' + data.id);
+        if (!itemView) {
+            return;
+        }
+        var itemContent = ejs.renderFile(this.itemTemplate, data, {cache:true});
+        itemView.html(itemContent);
+        // set droppable
+        if (this.droppable) {
+            var that = this;
+            $('#expandlist-item-' + data.id + '> .small-box').droppable({
+                tolerance : 'intersect',
+                hoverClass : 'bg-aqua-active',
+                scope : this.droppable_scope ? this.droppable_scope : 'default',
+                drop : function(event, ui) {
+                    if (that.droppable_drop) {
+                        that.droppable_drop(event, ui, data);
+                    }
+                }
+            });
+        }
+    };
+    this.render = function (data) {
+        if (!data || data.length <= 0) return;
 
         var content = '';
         var index = 0;
-        var rowCount = Math.ceil(exts.length / this.colCount);
+        var rowCount = Math.ceil(data.length / this.colCount);
         for (var row = 0; row < rowCount; row++) {
             content = content + '<div class="row">';
             for (var i = 0; i < this.colCount; i++) {
-                if (index >= exts.length) {
+                if (index >= data.length) {
                     break;
                 }
-                var ext = exts[index];
-                var html = ejs.renderFile(this.itemTemplate, ext, {cache:true});
-                content = content + html;
+                var item = '<div class="col-lg-3 col-xs-6" id="expandlist-item-'+ data[index].id + '">' +
+                    ejs.renderFile(this.itemTemplate, data[index], {cache:true}) + '</div>';
+                content = content + item;
                 index++;
             }
             content = content + '</div>';
@@ -76,8 +107,39 @@ function ExpandListView(parentSelector, loadingSelector,
         }
         $(this.loadingSelector).remove();// 必须是remove..
         $(this.parentSelector).append(content);
+        // set draggable
+        if (this.draggable) {
+            for (var j = 0; j < data.length; j++) {
+                $('#expandlist-item-' + data[j].id).draggable({
+                    zIndex: 1070,
+                    revert: true,
+                    opacity : 0.5,
+                    cursor : 'move',
+                    delay : 50, // prevent unwanted drags when clicking on an element
+                    distance: 5 // prevent unwanted drags when clicking on an element
+                });
+            }
+        }
+        // set droppable
+        if (this.droppable) {
+            var that = this;
+            for (var k = 0; k < data.length; k++) {
+                $('#expandlist-item-' + data[k].id + '> .small-box').droppable({
+                    tolerance : 'intersect',
+                    hoverClass : 'bg-aqua-active',
+                    scope : this.droppable_scope ? this.droppable_scope : 'default',
+                    drop : function(droppableData) {
+                        return function(event, ui) {
+                            if (that.droppable_drop) {
+                                that.droppable_drop(event, ui, droppableData);
+                            }
+                        }
+                    }(data[k])
+                });
+            }
+        }
     };
-    this.clearExtList = function () {
+    this.clear = function () {
         $(this.parentSelector).html(ejs.renderFile(this.loadingTemplate, {word:'loading...'}, {cache:true}));
         $(this.loadingSelector).hide();
     };
@@ -105,28 +167,35 @@ function ExpandListView(parentSelector, loadingSelector,
 
 /**
  * UI Component. EditableListView
- * @param prefix
- * @param parentSelector
- * @param addBtnSelector
- * @param confirmBtnSelector
- * @param inputSelector
- * @param addFn
- * @param removeFn
- * @param selectFn
- * @constructor
+ * <pre>
+ *     opt = {
+ *          prefix:
+ *          parentSelector:
+ *          addBtnSelector:
+ *          confirmBtnSelector:
+ *          inputSelector:
+ *          itemTemplate:
+ *          addFn:
+ *          removeFn:
+ *          selectFn:
+ *          draggable: [boolean]
+ *     }
+ * </pre>
+ * @param opt
  */
-function EditableListView(prefix, parentSelector, addBtnSelector,
-                          confirmBtnSelector, inputSelector, itemTemplate,
-                          addFn, removeFn, selectFn) {
-    this.prefix = prefix;
-    this.parentSelector = parentSelector;
-    this.addBtnSelector = addBtnSelector;
-    this.confirmBtnSelector = confirmBtnSelector;
-    this.inputSelector = inputSelector;
-    this.itemTemplate = itemTemplate;
-    this.addFn = addFn;
-    this.removeFn = removeFn;
-    this.selectFn = selectFn;
+function EditableListView(opt) {
+    opt = opt || {};
+    this.prefix = opt.prefix;
+    this.parentSelector = opt.parentSelector;
+    this.addBtnSelector = opt.addBtnSelector;
+    this.confirmBtnSelector = opt.confirmBtnSelector;
+    this.inputSelector = opt.inputSelector;
+    this.itemTemplate = opt.itemTemplate;
+    this.addFn = opt.addFn;
+    this.removeFn = opt.removeFn;
+    this.selectFn = opt.selectFn;
+    this.draggable = opt.draggable;
+    this.draggable_scope = opt.draggable_scope;
     this.render = function (tags) {
         if (!tags) return;
         // generate html
@@ -143,12 +212,28 @@ function EditableListView(prefix, parentSelector, addBtnSelector,
             index++;
         }
         $(this.parentSelector).html(content);
-        // register select and remove listener
+        // register draggable, select, remove listener
         var that = this;
         index = 0;
-        for(var tag2 in tags) {
-            if(this.selectFn) {
-                $('#' + this.prefix + '-item-id-' + index).click(tag2, function (event) {
+        for (var tag2 in tags) {
+            if (this.draggable) {// set draggable
+                var item = $('#' + this.prefix + '-item-id-' + index);
+                item.data('data', tag2);
+                item.css({cursor: 'move'});
+                item.draggable({
+                    scope : this.draggable_scope ? this.draggable_scope : 'default',
+                    zIndex: 1070,
+                    revert: true,
+                    cursor : 'move',
+                    opacity : 0.5,
+                    delay : 50, // prevent unwanted drags when clicking on an element
+                    distance: 5 // prevent unwanted drags when clicking on an element
+                });
+            }
+            if (this.selectFn) {//  set selectFn
+                var item = $('#' + this.prefix + '-item-id-' + index);
+                item.css({cursor: 'pointer'});
+                item.click(tag2, function (event) {
                     that.selectFn(event.data);
                 });
             }
@@ -287,10 +372,15 @@ $.ShanFox = {
         rawList : null,
         marketIFrame : new FullHeightIFrame('#market-iframe', '#page-right-content', 35),
         // ========================== ui function [start] ========================== //
-        createTagList : function(prefix, selectFn) {
-            return new EditableListView(prefix, '#tag-list', '#tag-add-btn',
-                '#tag-add-confirm-btn', '#tag-input',$.ShanFox.ui.template.tagItem,
-                function(inputTag, callback) {
+        createTagList : function(prefix, draggable, selectFn) {
+            return new EditableListView({
+                prefix: prefix,
+                parentSelector : '#tag-list',
+                addBtnSelector : '#tag-add-btn',
+                confirmBtnSelector : '#tag-add-confirm-btn',
+                inputSelector : '#tag-input',
+                itemTemplate : $.ShanFox.ui.template.tagItem,
+                addFn : function(inputTag, callback) {
                     $.ShanFox.ajax.tag.add(inputTag, function(result) {
                         if (result) {
                             // if currentTag is null. switch to new added tag
@@ -305,7 +395,8 @@ $.ShanFox = {
                             callback(null);
                         }
                     });
-                }, function (tag, callback) {
+                },
+                removeFn : function (tag, callback) {
                     $.ShanFox.ajax.tag.remove(tag, function(result) {
                         if (result) {
                             // remove taggedList for [tag]
@@ -325,7 +416,10 @@ $.ShanFox = {
                         // refresh tagList
                         callback(result);
                     });
-                }, selectFn);
+                },
+                selectFn : selectFn,
+                draggable : draggable
+            });
         },
         switchTag : function(tag) {
             $.ShanFox.ui.currentTag = tag;
@@ -335,16 +429,21 @@ $.ShanFox = {
             } else {
                 $('#header-selected-tag').html(tag + '  <small>共' + $.ShanFox.data.tags[tag] + '个</small>');
                 if (!$.ShanFox.ui.taggedList[tag]) {// new taggList for [tag]
-                    $.ShanFox.ui.taggedList[tag] = new ExpandListView('#ext-list', '#list-loading',
-                        $.ShanFox.ui.template.extItem, $.ShanFox.ui.template.loading,
-                        4, $.ShanFox.ajax.extension.getTaggedByPage);
+                    $.ShanFox.ui.taggedList[tag] = new ExpandListView({
+                        parentSelector : '#ext-list',
+                        loadingSelector : '#list-loading',
+                        itemTemplate : $.ShanFox.ui.template.extItem,
+                        loadingTemplate : $.ShanFox.ui.template.loading,
+                        colCount : 4,
+                        httpFn : $.ShanFox.ajax.extension.getTaggedByPage
+                    });
                 }
                 $.ShanFox.ui.taggedList[tag].registerScrollListener();
-                $.ShanFox.ui.taggedList[tag].clearExtList();
+                $.ShanFox.ui.taggedList[tag].clear();
                 if (!$.ShanFox.data.taggedExts[tag] || $.ShanFox.data.taggedExts[tag].length == 0) {
                     $.ShanFox.ui.taggedList[tag].loadMore();
                 } else {
-                    $.ShanFox.ui.taggedList[tag].renderExtList($.ShanFox.data.taggedExts[$.ShanFox.ui.currentTag]);
+                    $.ShanFox.ui.taggedList[tag].render($.ShanFox.data.taggedExts[$.ShanFox.ui.currentTag]);
                 }
             }
         },
@@ -390,7 +489,8 @@ $.ShanFox = {
                 case 0:
                     $('#left-tagged').addClass('active');
                     if (!$.ShanFox.ui.taggedTagList) {
-                        $.ShanFox.ui.taggedTagList = $.ShanFox.ui.createTagList('tagged-tag-list', $.ShanFox.ui.switchTag);
+                        $.ShanFox.ui.taggedTagList = $.ShanFox.ui.createTagList('tagged-tag-list',
+                            false, $.ShanFox.ui.switchTag);
                     }
                     $.ShanFox.ui.taggedTagList.registerClickListener();
                     if (!$.ShanFox.data.tags) {
@@ -414,7 +514,7 @@ $.ShanFox = {
                 case 1:
                     $('#left-raw').addClass('active');
                     if (!$.ShanFox.ui.rawTagList) {
-                        $.ShanFox.ui.rawTagList = $.ShanFox.ui.createTagList('raw-tag-list', null);
+                        $.ShanFox.ui.rawTagList = $.ShanFox.ui.createTagList('raw-tag-list', true, null);
                     }
                     $.ShanFox.ui.rawTagList.registerClickListener();
                     if (!$.ShanFox.data.tags) {
@@ -438,14 +538,38 @@ $.ShanFox = {
         },
         showRawList : function() {
             if (!$.ShanFox.ui.rawList) {// new rawList
-                $.ShanFox.ui.rawList = new ExpandListView('#ext-list', '#list-loading',
-                    $.ShanFox.ui.template.extItem, $.ShanFox.ui.template.loading,
-                    4, $.ShanFox.ajax.extension.getRawByPage);
+                $.ShanFox.ui.rawList = new ExpandListView({
+                    parentSelector : '#ext-list',
+                    loadingSelector : '#list-loading',
+                    itemTemplate : $.ShanFox.ui.template.extItem,
+                    loadingTemplate : $.ShanFox.ui.template.loading,
+                    colCount : 4,
+                    httpFn : $.ShanFox.ajax.extension.getRawByPage,
+                    droppable : true,
+                    droppable_drop : function(event, ui, data) {
+                        console.log(new Date().toString(), '[droppable_drop] dataId:' + data.id + ',dataName:' + data.name);
+                        var tag = ui.draggable.data('data');
+                        var extTags = data.tag ? data.tag : [];
+                        if (extTags.indexOf(tag) != -1) {
+                            // tag exist, cannot add again!
+                            alert('扩展[' + data.name + ']已包含标签[' + tag + ']，不可重复添加!');
+                        } else {
+                            var extId = data.id;
+                            $.ShanFox.ajax.extension.addTag(extId, tag, function(result) {
+                                if (result) {
+                                    $.ShanFox.ui.rawList.refreshItem(data);
+                                } else {
+                                    alert('给扩展[' + data.name + ']添加标签[' + tag + ']失败!');
+                                }
+                            });
+                        }
+                    }
+                });
             }
             if ($.ShanFox.data.rawExts.length == 0) {
                 $.ShanFox.ui.rawList.loadMore();
             } else {
-                $.ShanFox.ui.rawList.renderExtList($.ShanFox.data.rawExts);
+                $.ShanFox.ui.rawList.render($.ShanFox.data.rawExts);
             }
             $.ShanFox.ui.rawList.registerScrollListener();
         },
@@ -636,6 +760,42 @@ $.ShanFox = {
                         console.log(new Date().toString(), '[getRawByPage]error!' + errorThrown.toString());
                         if (callback) {
                             callback(null, true);
+                        }
+                    }
+                });
+            },
+            addTag : function(extId, tag, callback) {
+                $.ajax({
+                    url: 'ext/addTag',
+                    type: 'POST',
+                    data: {ext : extId, tag : tag},
+                    success: function(data, textStatus, xhr) {
+                        var result = data && data.result;
+                        if (result) {
+                            $.ShanFox.data.tags[tag]++;
+                            var ext = null;
+                            for (var i = 0; i < $.ShanFox.data.rawExts.length; i++) {
+                                if(extId === $.ShanFox.data.rawExts[i].id) {
+                                    ext = $.ShanFox.data.rawExts[i];
+                                    break;
+                                }
+                            }
+                            if (ext) {
+                                if (ext.tag) {
+                                    ext.tag.push(tag);
+                                } else {
+                                    ext.tag.push = [tag];
+                                }
+                            }
+                        }
+                        if (callback) {
+                            callback(result);
+                        }
+                    },
+                    error: function(xmlHttpRequest, textStatus, errorThrown) {
+                        console.log(new Date().toString(), '[tag.add]error!' + errorThrown.toString());
+                        if (callback) {
+                            callback(false);
                         }
                     }
                 });
