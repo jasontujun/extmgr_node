@@ -7,15 +7,36 @@ dao.init(function(size) {
   console.log(new Date().toString(), 'init finish. data size is ' + size);
 });
 
-router.get('/tagged/getAllByPage', function(req, res) {
+router.get('/getAllByPage', function(req, res) {
   if (!req.query.offset || !req.query.count) {
     res.status(400).end();
     return;
   }
   var offset = parseInt(req.query.offset);
   var count = parseInt(req.query.count);
+  dao.getAllExtByPage(offset, count, function(data) {
+    var result = {};
+    if(!data) {
+      result.count = -1;// no more data
+    } else {
+      result.count = data.length;
+      result.exts = data;
+      console.log(new Date().toString(), '@@@ /ext/tagged/getAllByPage!offset=' + offset +
+      ',count=' + count + ',return=' + data.length);
+    }
+    res.status(200).json(result);
+  });
+});
+
+router.get('/tagged/getAllByPage', function(req, res) {
+  if (!req.query.offset || !req.query.count || !req.query.tag) {
+    res.status(400).end();
+    return;
+  }
+  var offset = parseInt(req.query.offset);
+  var count = parseInt(req.query.count);
   var tag = req.query.tag;
-  dao.getExtByPage(tag, offset, count, function(data) {
+  dao.getTaggedExtByPage(tag, offset, count, function(data) {
     var result = {};
     if(!data) {
       result.count = -1;// no more data
@@ -29,7 +50,6 @@ router.get('/tagged/getAllByPage', function(req, res) {
   });
 });
 
-
 router.get('/raw/getAllByPage', function(req, res) {
   if (!req.query.offset || !req.query.count) {
     res.status(400).end();
@@ -37,7 +57,7 @@ router.get('/raw/getAllByPage', function(req, res) {
   }
   var offset = parseInt(req.query.offset);
   var count = parseInt(req.query.count);
-  dao.getExtByPage(null, offset, count, function(data) {
+  dao.getRawExtByPage(offset, count, function(data) {
     var result = {};
     if(!data) {
       result.count = -1;// no more data

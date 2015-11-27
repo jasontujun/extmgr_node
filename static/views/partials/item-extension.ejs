@@ -1,13 +1,32 @@
-<div class="small-box bg-aqua">
-    <div style="width: 100%; min-height: 140px;background-image:url(<%= image %>);
+<div class="box box-widget widget-user">
+    <!-- extension bg image -->
+    <div class="widget-user-header bg-black" style="height: 140px;background-image: url(<%= image %>);
             background-repeat: no-repeat;
             -webkit-background-size: contain;background-size: cover;">
-
+        <!--<h3 class="widget-user-username">Elizabeth Pierce</h3>-->
+        <!--<h5 class="widget-user-desc">Web Designer</h5>-->
     </div>
-    <div class="inner">
-        <h3><%= name%></h3>
-        <p><%= size %></p>
-        <p><%= tag %></p>
+    <div class="box-body">
+        <!-- name -->
+        <div style="font-size: 20px"><%= name%></div>
+        <div>
+            <!-- tag -->
+            <div class="btn-group">
+                <button type="button" class="btn btn-box-tool dropdown-toggle" data-toggle="dropdown">
+                    <i class="fa fa-tags"> <%= tag ? tag.length : 0 %></i>
+                </button>
+                <% if(tag && tag.length > 0) { %>
+                <ul class="dropdown-menu" role="menu">
+                    <% for (var i = 0; i < tag.length; i++) { %>
+                    <li><a href="#"><%= tag[i] %></a></li>
+                    <% } %>
+                </ul>
+                <% } %>
+            </div>
+            <!-- size -->
+            <div class="pull-right">
+                <div style="display: inline-block; font-size: 18px"><%= size %></div>
+            </div>
+        </div>
     </div>
-    <a href="#" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
 </div>
