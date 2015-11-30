@@ -1,4 +1,11 @@
 
+<!-- Content Header (Page header) -->
+<section class="content-header">
+    <h1 id="header-selected-tag">
+        Page Header<small>共0个</small>
+    </h1>
+</section>
+
 <!-- Main content -->
 <section class="content">
     <div class="row">
@@ -22,6 +29,16 @@
                         <input type="text" id="tag-input" placeholder="输入标签..." class="form-control">
                         <button class="btn btn-primary btn-flat" id="tag-add-confirm-btn" style="width:100%;margin-top:10px;">添加</button>
                     </div>
+                    <!-- 无标签 -->
+                    <ul class="nav nav-pills nav-stacked">
+                        <li class="box sfhoverbox" id="tag-raw">
+                            <a>
+                                <i class="fa fa-circle-o text-red"></i>
+                                空
+                                <span class="badge bg-red" style="margin-left:10px" id="tag-raw-size">0</span>
+                            </a>
+                        </li>
+                    </ul>
                     <ul class="nav nav-pills nav-stacked" id="tag-list">
                     </ul>
                 </div>

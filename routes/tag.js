@@ -4,9 +4,11 @@ var dao = require('../lib/dao');
 
 
 router.get('/getAll', function(req, res) {
+    var withRaw = req.query.withRaw;
     dao.getAllTag(function(data) {
-        console.log(new Date().toString(), '@@@ /tag/getAll!return=' + data);
-        res.status(200).json(data);
+        console.log(new Date().toString(), '@@@ /tag/getAll!withRaw=' + withRaw + ',return=' + data);
+        var result = withRaw ? {tags:data, raw:dao.getRawSize()} : {tags:data};
+        res.status(200).json(result);
     })
 });
 

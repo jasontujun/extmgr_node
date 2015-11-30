@@ -64,7 +64,7 @@ router.get('/raw/getAllByPage', function(req, res) {
     } else {
       result.count = data.length;
       result.exts = data;
-      console.log(new Date().toString(), '@@@ /ext/tagged/getAllByPage!offset=' + offset +
+      console.log(new Date().toString(), '@@@ /ext/raw/getAllByPage!offset=' + offset +
       ',count=' + count + ',return=' + data.length);
     }
     res.status(200).json(result);
