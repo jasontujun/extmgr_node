@@ -10,8 +10,10 @@
  *          loadingSelector:
  *          itemTemplate:
  *          loadingTemplate:
+ *          loadingWord:
  *          colCount: [number]
  *          httpFn: [function(callbcak([Object]data, [boolean]hasMore))] the ajax function to get more data.
+ *          itemCallback: [function([Object]data, [Object]itemView] callback when item view created.
  *          draggable: [boolean]
  *          droppable: [boolean]
  *          droppable_hover: [string]
@@ -29,8 +31,10 @@ function ExpandListView(opt) {
     this.loadingSelector = opt.loadingSelector;
     this.itemTemplate = opt.itemTemplate;
     this.loadingTemplate = opt.loadingTemplate;
+    this.loadingWord = opt.loadingWord;
     this.colCount = opt.colCount || 1;
     this.httpFn = opt.httpFn;
+    this.itemCallback = opt.itemCallback;
     this.draggable = opt.draggable;
     this.droppable = opt.droppable;
     this.droppable_hover = opt.droppable_hover;
@@ -39,7 +43,7 @@ function ExpandListView(opt) {
     this.droppable_over = opt.droppable_over;
     this.droppable_out= opt.droppable_out;
 
-    this.more = true;
+    this.more = !!opt.httpFn;// 如果没有加载更多的方法，则默认不能加载更多
     this.loading = false;
     this.scrollListener = null;
 
@@ -50,7 +54,8 @@ function ExpandListView(opt) {
         this.loading = true;
         var loadingTip = $(this.loadingSelector);
         if (!loadingTip) {// loadingTip not exist, add
-            $(this.parentSelector).html(ejs.renderFile(this.loadingTemplate, {word:'loading...'}, {cache:true}));
+            $(this.parentSelector).html(ejs.renderFile(this.loadingTemplate,
+                {word : this.loadingWord}, {cache:true}));
         }
         loadingTip.show();
         var that = this;
@@ -66,6 +71,48 @@ function ExpandListView(opt) {
             that.loading = false;
         });
     };
+    this.initItem = function(data, itemView) {
+        // set draggable
+        if (this.draggable) {
+            itemView.draggable({
+                zIndex: 1070,
+                revert: true,
+                opacity : 0.5,
+                cursor : 'move',
+                delay : 50, // prevent unwanted drags when clicking on an element
+                distance: 5 // prevent unwanted drags when clicking on an element
+            });
+        }
+        // set droppable
+        if (this.droppable) {
+            var that = this;
+            var element = itemView.children();
+            element.droppable({
+                tolerance : 'intersect',
+                hoverClass : this.droppable_hover,
+                scope : this.droppable_scope ? this.droppable_scope : 'default',
+                drop : function(event, ui) {
+                    if (that.droppable_drop) {
+                        that.droppable_drop(ui.draggable, element, data, event);
+                    }
+                },
+                out : function(event, ui) {
+                    if (that.droppable_out) {
+                        that.droppable_out(ui.draggable, element, data, event);
+                    }
+                },
+                over : function(event, ui) {
+                    if (that.droppable_over) {
+                        that.droppable_over(ui.draggable, element, data, event);
+                    }
+                }
+            });
+        }
+        // callback
+        if (this.itemCallback) {
+            this.itemCallback(data, itemView);
+        }
+    };
     this.refreshItem = function(data) {
         var itemView = $('#expandlist-item-' + data.id);
         if (!itemView) {
@@ -73,31 +120,8 @@ function ExpandListView(opt) {
         }
         var itemContent = ejs.renderFile(this.itemTemplate, data, {cache:true});
         itemView.html(itemContent);
-        // set droppable
-        if (this.droppable) {
-            var that = this;
-            var droppableElement = $('#expandlist-item-' + data.id).children();
-            droppableElement.droppable({
-                tolerance : 'intersect',
-                hoverClass : this.droppable_hover,
-                scope : this.droppable_scope ? this.droppable_scope : 'default',
-                drop : function(event, ui) {
-                    if (that.droppable_drop) {
-                        that.droppable_drop(ui.draggable, droppableElement, data, event);
-                    }
-                },
-                out : function(event, ui) {
-                    if (that.droppable_out) {
-                        that.droppable_out(ui.draggable, droppableElement, data, event);
-                    }
-                },
-                over : function(event, ui) {
-                    if (that.droppable_over) {
-                        that.droppable_over(ui.draggable, droppableElement, data, event);
-                    }
-                }
-            });
-        }
+        // init item
+        this.initItem(data, itemView);
     };
     this.render = function (data) {
         if (!data || data.length <= 0) return;
@@ -119,60 +143,20 @@ function ExpandListView(opt) {
             content = content + '</div>';
         }
         if (this.more) {
-            var loadingTip = ejs.renderFile(this.loadingTemplate, {word:'loading...'}, {cache:true});
+            var loadingTip = ejs.renderFile(this.loadingTemplate,
+                {word : this.loadingWord}, {cache:true});
             content = content + loadingTip;
         }
         $(this.loadingSelector).remove();// 必须是remove..
         $(this.parentSelector).append(content);
-        // set draggable
-        if (this.draggable) {
-            for (var j = 0; j < data.length; j++) {
-                $('#expandlist-item-' + data[j].id).draggable({
-                    zIndex: 1070,
-                    revert: true,
-                    opacity : 0.5,
-                    cursor : 'move',
-                    delay : 50, // prevent unwanted drags when clicking on an element
-                    distance: 5 // prevent unwanted drags when clicking on an element
-                });
-            }
-        }
-        // set droppable
-        if (this.droppable) {
-            var that = this;
-            for (var k = 0; k < data.length; k++) {
-                var element = $('#expandlist-item-' + data[k].id).children();
-                element.droppable({
-                    tolerance : 'intersect',
-                    hoverClass : this.droppable_hover,
-                    scope : this.droppable_scope ? this.droppable_scope : 'default',
-                    drop : function(droppableData, droppableElement) {
-                        return function(event, ui) {
-                            if (that.droppable_drop) {
-                                that.droppable_drop(ui.draggable, droppableElement, droppableData, event);
-                            }
-                        }
-                    }(data[k], element),
-                    out : function(droppableData, droppableElement) {
-                        return function(event, ui) {
-                            if (that.droppable_out) {
-                                that.droppable_out(ui.draggable, droppableElement, droppableData, event);
-                            }
-                        }
-                    }(data[k], element),
-                    over : function(droppableData, droppableElement) {
-                        return function(event, ui) {
-                            if (that.droppable_over) {
-                                that.droppable_over(ui.draggable, droppableElement, droppableData, event);
-                            }
-                        }
-                    }(data[k], element)
-                });
-            }
+        // init item
+        for (var d = 0; d < data.length; d++) {
+            this.initItem(data[d], $('#expandlist-item-' + data[d].id));
         }
     };
     this.clear = function () {
-        $(this.parentSelector).html(ejs.renderFile(this.loadingTemplate, {word:'loading...'}, {cache:true}));
+        $(this.parentSelector).html(ejs.renderFile(this.loadingTemplate,
+            {word : this.loadingWord}, {cache:true}));
         $(this.loadingSelector).hide();
     };
     this.registerScrollListener = function () {
@@ -409,7 +393,8 @@ function FullHeightIFrame(frameSelector, parentSelector, wrapperHeight) {
  * @param fx 动画速度s
  */
 function shake(element, time, wh, fx) {
-    $(function(){var offset = element.offset();
+    $(function() {
+        var offset = element.offset();
         var x = offset.left;
         var y = offset.top;
         for (var i = 1; i <= time; i++) {
@@ -521,6 +506,7 @@ $.ShanFox = {
                     data: {tag : tag},
                     success: function(data, textStatus, xhr) {
                         var result = data && data.result;
+                        var rawChange = false;
                         if (result) {
                             if ($.ShanFox.data.taggedExtension[tag]) {
                                 for (var i = 0; i < $.ShanFox.data.taggedExtension[tag].length; i++) {
@@ -530,6 +516,7 @@ $.ShanFox = {
                                             $.ShanFox.data.taggedExtension[tag][i].tag.splice(index, 1);
                                             if ($.ShanFox.data.taggedExtension[tag][i].tag.length === 0) {
                                                 // TODO refresh raw size and rawList
+                                                rawChange = true;
                                             }
                                         }
                                     }
@@ -541,11 +528,11 @@ $.ShanFox = {
                             }
                         }
                         if (callback) {
-                            callback(result);
+                            callback(result, rawChange);
                         }
                     },
                     error: function(xmlHttpRequest, textStatus, errorThrown) {
-                        console.log(new Date().toString(), '[tag.add]error!' + errorThrown.toString());
+                        console.log(new Date().toString(), '[tag.remove]error!' + errorThrown.toString());
                         if (callback) {
                             callback(false);
                         }
@@ -589,16 +576,18 @@ $.ShanFox = {
                                 if (!$.ShanFox.data.allExtension[data.exts[i].id]) {
                                     // cache new extension data
                                     $.ShanFox.data.allExtension[data.exts[i].id] = data.exts[i];
-                                    // add to taggedExtension
-                                    if(!$.ShanFox.data.taggedExtension[tag]) {
-                                        $.ShanFox.data.taggedExtension[tag] = [];
-                                    }
-                                    $.ShanFox.data.taggedExtension[tag].push($.ShanFox.data.allExtension[data.exts[i].id]);
                                 } else {
                                     // update local extension data
                                     for(var property in data.exts[i]) {
                                         $.ShanFox.data.allExtension[data.exts[i].id][property] = data.exts[i][property];
                                     }
+                                }
+                                // add to taggedExtension
+                                if(!$.ShanFox.data.taggedExtension[tag]) {
+                                    $.ShanFox.data.taggedExtension[tag] = [];
+                                }
+                                if ($.ShanFox.data.taggedExtension[tag].indexOf($.ShanFox.data.allExtension[data.exts[i].id]) === -1) {
+                                    $.ShanFox.data.taggedExtension[tag].push($.ShanFox.data.allExtension[data.exts[i].id]);
                                 }
                             }
                         }
@@ -635,13 +624,15 @@ $.ShanFox = {
                                 if (!$.ShanFox.data.allExtension[data.exts[i].id]) {
                                     // cache new extension data
                                     $.ShanFox.data.allExtension[data.exts[i].id] = data.exts[i];
-                                    // add to rawExtension
-                                    $.ShanFox.data.rawExtension.push($.ShanFox.data.allExtension[data.exts[i].id]);
                                 } else {
                                     // update local extension data
                                     for(var property in data.exts[i]) {
                                         $.ShanFox.data.allExtension[data.exts[i].id][property] = data.exts[i][property];
                                     }
+                                }
+                                // add to rawExtension
+                                if ($.ShanFox.data.rawExtension.indexOf($.ShanFox.data.allExtension[data.exts[i].id]) === -1) {
+                                    $.ShanFox.data.rawExtension.push($.ShanFox.data.allExtension[data.exts[i].id]);
                                 }
                             }
                         }
@@ -661,6 +652,42 @@ $.ShanFox = {
                     }
                 });
             },
+            search : function(keyword, callback) {
+                var offset = $.ShanFox.data.rawExtension.length;
+                $.ajax({
+                    url: 'ext/search',
+                    type: 'GET',
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    data: {
+                        keyword: keyword
+                    },
+                    success: function (data) {
+                        if (data.result && data.result.length > 0) {
+                            for (var i = 0; i < data.result.length; i++) {
+                                if (!$.ShanFox.data.allExtension[data.result[i].id]) {
+                                    // cache new extension data
+                                    $.ShanFox.data.allExtension[data.result[i].id] = data.result[i];
+                                } else {
+                                    // update local extension data
+                                    for(var property in data.result[i]) {
+                                        $.ShanFox.data.allExtension[data.result[i].id][property] = data.result[i][property];
+                                    }
+                                }
+                            }
+                        }
+                        if (callback) {
+                            callback(data.result);
+                        }
+                    },
+                    error: function (xmlHttpRequest, textStatus, errorThrown) {
+                        console.log(new Date().toString(), '[getRawByPage]error!' + errorThrown.toString());
+                        if (callback) {
+                            callback(null);
+                        }
+                    }
+                });
+            },
             addTag : function(extId, tag, callback) {
                 $.ajax({
                     url: 'ext/addTag',
@@ -668,24 +695,27 @@ $.ShanFox = {
                     data: {ext : extId, tag : tag},
                     success: function(data, textStatus, xhr) {
                         var result = data && data.result;
+                        var rawChange = false;
                         if (result) {
-                            $.ShanFox.data.tags[tag]++;
                             var ext = $.ShanFox.data.allExtension[extId];
                             if (ext) {
+                                if (!ext.tag || ext.tag.length === 0) {
+                                    // TODO refresh raw size and rawList
+                                    rawChange = true;
+                                }
                                 if (ext.tag) {
                                     ext.tag.push(tag);
                                 } else {
                                     ext.tag.push = [tag];
-                                    // TODO refresh raw size and rawList
                                 }
                             }
                         }
                         if (callback) {
-                            callback(result);
+                            callback(result, rawChange);
                         }
                     },
                     error: function(xmlHttpRequest, textStatus, errorThrown) {
-                        console.log(new Date().toString(), '[tag.add]error!' + errorThrown.toString());
+                        console.log(new Date().toString(), '[extension.addTag]error!' + errorThrown.toString());
                         if (callback) {
                             callback(false);
                         }
@@ -699,8 +729,8 @@ $.ShanFox = {
                     data: {ext : extId, tag : tag},
                     success: function(data, textStatus, xhr) {
                         var result = data && data.result;
+                        var rawChange = false;
                         if (result) {
-                            $.ShanFox.data.tags[tag]--;
                             var ext = $.ShanFox.data.allExtension[extId];
                             if (ext) {
                                 var index = ext.tag.indexOf(tag);
@@ -708,16 +738,17 @@ $.ShanFox = {
                                     ext.tag.splice(index, 1);
                                     if (ext.tag.length === 0) {
                                         // TODO refresh raw size and rawList
+                                        rawChange = true;
                                     }
                                 }
                             }
                         }
                         if (callback) {
-                            callback(result);
+                            callback(result, rawChange);
                         }
                     },
                     error: function(xmlHttpRequest, textStatus, errorThrown) {
-                        console.log(new Date().toString(), '[tag.add]error!' + errorThrown.toString());
+                        console.log(new Date().toString(), '[extension.removeTag]error!' + errorThrown.toString());
                         if (callback) {
                             callback(false);
                         }
@@ -727,8 +758,11 @@ $.ShanFox = {
         }
     },
     ui : {
-        currentTag: null,
-        currentMarket : null,
+        currentContent : 0,// 0表示扩展，1表示扩展市场
+        currentTag: null,// 当前选中的表情
+        currentMarket : null,// 当前选中的市场
+        cacheRawClear : false,// 标识空标签的扩展数据缓存失效，需要重新向服务器请求
+        cacheTagClear : {}, // 标识有标签的扩展数据缓存失效，需要重新向服务器请求
         template : {
             extensionContent: 'views/partials/content-extension.ejs',
             marketContent: 'views/partials/content-market.ejs',
@@ -737,11 +771,60 @@ $.ShanFox = {
             loading : 'views/partials/list-loading.ejs',
             inputDialog : 'views/partials/dialog-input.ejs'
         },
+
+        // ========================== ui widget [start] ========================== //
         tagList : null,
-        rawList : null,//
-        extensionList : {},// {tagName : ExpandListView}
-        marketIFrame : new FullHeightIFrame('#market-iframe', '#page-right-content', 35),
+        rawList : null,// 无标签的扩展列表
+        extensionList : {},// 每个标签都有一个列表 {tagName : ExpandListView}
+        searchList : null,// 搜索结果的扩展列表
+        marketIFrame : null,
+        // ========================== ui widget [end] ========================== //
+
         // ========================== ui function [start] ========================== //
+        clearLocalCache : function(tag) {
+            var cacheClear = tag ? $.ShanFox.ui.cacheTagClear[tag] : $.ShanFox.ui.cacheRawClear;
+            if (cacheClear) {
+                if (tag) {
+                    $.ShanFox.ui.cacheTagClear[tag] = false;
+                } else {
+                    $.ShanFox.ui.cacheRawClear = false;
+                }
+                if (!tag) {
+                    // 当前标签不是‘空标签’，则清空‘空标签’集合，等下次切换到‘空标签’时刷新
+                    for (var i = 0; i < $.ShanFox.data.rawExtension.length; i++) {
+                        delete $.ShanFox.data.allExtension[$.ShanFox.data.rawExtension[i].id];
+                    }
+                    $.ShanFox.data.rawExtension = [];
+                } else {
+                    if ($.ShanFox.data.taggedExtension[tag]) {
+                        // 当前标签不是‘指定标签’，则清空‘指定标签’的集合，等下次切换到‘指定标签’时刷新
+                        for (var i = 0; i < $.ShanFox.data.taggedExtension[tag].length; i++) {
+                            delete $.ShanFox.data.allExtension[$.ShanFox.data.taggedExtension[tag][i].id];
+                        }
+                        $.ShanFox.data.taggedExtension[tag] = null;
+                    }
+                }
+                // 让列表控件能滚动到底部加载更多
+                if ($.ShanFox.ui.rawList) {
+                    $.ShanFox.ui.rawList.more = true;
+                }
+                for (var tag2 in $.ShanFox.ui.extensionList) {
+                    $.ShanFox.ui.extensionList[tag2].more = true;
+                }
+            }
+        },
+        clearLocalCacheLazy : function(tag) {
+            // 设置待清除缓存标识
+            if (tag) {
+                $.ShanFox.ui.cacheTagClear[tag] = true;
+            } else {
+                $.ShanFox.ui.cacheRawClear = true;
+            }
+            // 如果当前标签不是指定标签，则立即清除缓存
+            if ($.ShanFox.ui.currentTag !== tag) {
+                $.ShanFox.ui.clearLocalCache(tag);
+            }
+        },
         clearScrollListener : function() {
             for (var tag in $.ShanFox.ui.extensionList) {
                 $.ShanFox.ui.extensionList[tag].unregisterScrollListener();
@@ -763,9 +846,15 @@ $.ShanFox = {
         },
         switchTag : function(tag) {
             $.ShanFox.ui.currentTag = tag;
+            // 检查是否要清空缓存
+            var cacheClear = tag ? $.ShanFox.ui.cacheTagClear[tag] : $.ShanFox.ui.cacheRawClear;
+            if (cacheClear) {
+                $.ShanFox.ui.clearLocalCache(tag);
+            }
+
             $.ShanFox.ui.clearScrollListener();
-            if (!tag) {// tag is null, clear the page
-                $('#header-selected-tag').html('当前的扩展无标签，请拖动标签到扩展里以添加标签'
+            if (!tag) {
+                $('#header-selected-tag').html('空标签(请拖动标签到扩展里以添加)'
                 + '  <small>共' + $.ShanFox.data.rawExtSize + '个</small>');
             } else {
                 $('#header-selected-tag').html(tag + '  <small>共' + $.ShanFox.data.tags[tag] + '个</small>');
@@ -778,8 +867,33 @@ $.ShanFox = {
                     loadingSelector : '#list-loading',
                     itemTemplate : $.ShanFox.ui.template.extItem,
                     loadingTemplate : $.ShanFox.ui.template.loading,
+                    loadingWord : 'loading...',
                     colCount : 4,
                     httpFn : tag ? $.ShanFox.ajax.extension.getTaggedByPage : $.ShanFox.ajax.extension.getRawByPage,
+                    itemCallback : function(data, itemView) {
+                        var tagList = data.tag;
+                        var lis = itemView.find('li');
+                        for (var i = 0; i < lis.length; i++) {
+                            var deleteBtn = $(lis[i]).find('.btn');
+                            deleteBtn.click(tagList[i], function(event) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                $.ShanFox.ajax.extension.removeTag(data.id, event.data,
+                                    function(result, rawChange) {
+                                        if (result) {
+                                            listView.refreshItem(data);
+                                            $.ShanFox.ui.showTagList(true);
+                                            $.ShanFox.ui.clearLocalCacheLazy(event.data);
+                                            if (rawChange) {
+                                                $.ShanFox.ui.clearLocalCacheLazy(null);
+                                            }
+                                        } else {
+                                            alert('给扩展[' + data.name + ']添加标签[' + event.data + ']失败!');
+                                        }
+                                    });
+                            });
+                        }
+                    },
                     droppable : true,
                     droppable_hover : 'bg-gray-active',
                     droppable_drop : function(draggableElement, droppableElement, data) {
@@ -794,14 +908,19 @@ $.ShanFox = {
                             btn.removeClass('open');
                         } else {
                             var extId = data.id;
-                            $.ShanFox.ajax.extension.addTag(extId, dragTag, function(result) {
-                                if (result) {
-                                    listView.refreshItem(data);
-                                    $.ShanFox.ui.tagList.render($.ShanFox.data.tags);
-                                } else {
-                                    alert('给扩展[' + data.name + ']添加标签[' + dragTag + ']失败!');
-                                }
-                            });
+                            $.ShanFox.ajax.extension.addTag(extId, dragTag,
+                                function(result, rawChange) {
+                                    if (result) {
+                                        listView.refreshItem(data);
+                                        $.ShanFox.ui.showTagList(true);
+                                        $.ShanFox.ui.clearLocalCacheLazy(dragTag);
+                                        if (rawChange) {
+                                            $.ShanFox.ui.clearLocalCacheLazy(null);
+                                        }
+                                    } else {
+                                        alert('给扩展[' + data.name + ']添加标签[' + dragTag + ']失败!');
+                                    }
+                                });
                         }
                     },
                     droppable_over : function(draggableElement, droppableElement, data) {
@@ -827,7 +946,104 @@ $.ShanFox = {
                 listView.render(dataList);
             }
         },
+        showSearchResult : function(keyword, result) {
+            // clear global listener
+            $.ShanFox.ui.clearScrollListener();
+            $('#header-selected-tag').html('搜索"' + keyword + '"的结果<small>共' + result.length + '个</small>');
+            if (!$.ShanFox.ui.searchList) {
+                $.ShanFox.ui.searchList = new ExpandListView({
+                    parentSelector : '#ext-list',
+                    loadingSelector : '#list-loading',
+                    itemTemplate : $.ShanFox.ui.template.extItem,
+                    loadingTemplate : $.ShanFox.ui.template.loading,
+                    loadingWord : 'loading...',
+                    colCount : 4,
+                    itemCallback : function(data, itemView) {
+                        var tagList = data.tag;
+                        var lis = itemView.find('li');
+                        for (var i = 0; i < lis.length; i++) {
+                            var deleteBtn = $(lis[i]).find('.btn');
+                            deleteBtn.click(tagList[i], function(event) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                $.ShanFox.ajax.extension.removeTag(data.id, event.data,
+                                    function(result, rawChange) {
+                                        if (result) {
+                                            $.ShanFox.ui.searchList.refreshItem(data);
+                                            $.ShanFox.ui.showTagList(true);
+                                            $.ShanFox.ui.clearLocalCacheLazy(event.data);
+                                            if (rawChange) {
+                                                $.ShanFox.ui.clearLocalCacheLazy(null);
+                                            }
+                                        } else {
+                                            alert('给扩展[' + data.name + ']添加标签[' + event.data + ']失败!');
+                                        }
+                                    });
+                            });
+                        }
+                    },
+                    droppable : true,
+                    droppable_hover : 'bg-gray-active',
+                    droppable_drop : function(draggableElement, droppableElement, data) {
+                        console.log(new Date().toString(), '[droppable_drop] dataId:' + data.id + ',dataName:' + data.name);
+                        var dragTag = draggableElement.data('data');
+                        var extTags = data.tag ? data.tag : [];
+                        if (extTags.indexOf(dragTag) != -1) {
+                            // tag exist, cannot add again!
+                            //alert('扩展[' + data.name + ']已包含标签[' + tag + ']，不可重复添加!');
+                            shake(droppableElement, 6, 10, 100);
+                            var btn = droppableElement.find('.btn-group');
+                            btn.removeClass('open');
+                        } else {
+                            var extId = data.id;
+                            $.ShanFox.ajax.extension.addTag(extId, dragTag,
+                                function(result, rawChange) {
+                                    if (result) {
+                                        $.ShanFox.ui.searchList.refreshItem(data);
+                                        $.ShanFox.ui.showTagList(true);
+                                        $.ShanFox.ui.clearLocalCacheLazy(dragTag);
+                                        if (rawChange) {
+                                            $.ShanFox.ui.clearLocalCacheLazy(null);
+                                        }
+                                    } else {
+                                        alert('给扩展[' + data.name + ']添加标签[' + dragTag + ']失败!');
+                                    }
+                                });
+                        }
+                    },
+                    droppable_over : function(draggableElement, droppableElement, data) {
+                        var btn = droppableElement.find('.btn-group');
+                        btn.addClass('open');
+                    },
+                    droppable_out : function(draggableElement, droppableElement, data) {
+                        var btn = droppableElement.find('.btn-group');
+                        btn.removeClass('open');
+                    }
+                });
+            }
+            $.ShanFox.ui.searchList.clear();
+            $.ShanFox.ui.searchList.render(result);
+        },
+        showTagList : function(forceRefresh, callback) {
+            if (!$.ShanFox.data.tags || forceRefresh) {
+                // no tags data, request
+                $.ShanFox.ajax.tag.getAll(function(tags) {
+                    $('#tag-raw-size').text($.ShanFox.data.rawExtSize);
+                    $.ShanFox.ui.tagList.render($.ShanFox.data.tags);
+                    if (callback) {
+                        callback(true);
+                    }
+                });
+            } else {
+                $('#tag-raw-size').text($.ShanFox.data.rawExtSize);
+                $.ShanFox.ui.tagList.render($.ShanFox.data.tags);
+                if (callback) {
+                    callback(false);
+                }
+            }
+        },
         showExtension : function() {
+            $.ShanFox.ui.currentContent = 0;
             // left menu
             $.ShanFox.ui.clearLeftMenuActive();
             $('#left-ext').addClass('active');
@@ -858,24 +1074,46 @@ $.ShanFox = {
                         });
                     },
                     removeFn : function (tag, callback) {
-                        $.ShanFox.ajax.tag.remove(tag, function(result) {
+                        $.ShanFox.ajax.tag.remove(tag, function(result, rawChange) {
                             if (result) {
-                                // remove extensionList for [tag]
-                                delete $.ShanFox.ui.extensionList[tag];
-                                // if currentTag is removed. switch to another tag
-                                if ($.ShanFox.ui.currentTag === tag) {
-                                    var nextTag = null;
-                                    for (var t in $.ShanFox.data.tags) {
-                                        nextTag = t;
-                                        break;
+                                if (rawChange) {
+                                    // force refresh tag list
+                                    $.ShanFox.ajax.tag.getAll(function(tags) {
+                                        // remove extensionList for [tag]
+                                        delete $.ShanFox.ui.extensionList[tag];
+                                        // if currentTag is removed. switch to another tag
+                                        if ($.ShanFox.ui.currentTag === tag) {
+                                            var nextTag = null;
+                                            for (var t in $.ShanFox.data.tags) {
+                                                nextTag = t;
+                                                break;
+                                            }
+                                            $.ShanFox.ui.switchTag(nextTag);
+                                        }
+                                        $('#tag-raw-size').text($.ShanFox.data.rawExtSize);
+                                        // refresh tagList
+                                        callback(result);
+                                    });
+                                } else {
+                                    // remove extensionList for [tag]
+                                    delete $.ShanFox.ui.extensionList[tag];
+                                    // if currentTag is removed. switch to another tag
+                                    if ($.ShanFox.ui.currentTag === tag) {
+                                        var nextTag = null;
+                                        for (var t in $.ShanFox.data.tags) {
+                                            nextTag = t;
+                                            break;
+                                        }
+                                        $.ShanFox.ui.switchTag(nextTag);
                                     }
-                                    $.ShanFox.ui.switchTag(nextTag);
+                                    // refresh tagList
+                                    callback(result);
                                 }
                             } else {
                                 alert('删除标签[' + tag + ']失败!');
+                                // refresh tagList
+                                callback(result);
                             }
-                            // refresh tagList
-                            callback(result);
                         });
                     },
                     selectFn : $.ShanFox.ui.switchTag,
@@ -887,21 +1125,18 @@ $.ShanFox = {
             $('#tag-raw').click(function() {
                 $.ShanFox.ui.switchTag(null);
             });
-            if (!$.ShanFox.data.tags) {
-                // no tags data, request
-                $.ShanFox.ajax.tag.getAll(function(tags) {
-                    $('#tag-raw-size').text($.ShanFox.data.rawExtSize);
-                    $.ShanFox.ui.tagList.render($.ShanFox.data.tags);
+            $.ShanFox.ui.showTagList(false, function (refreshFromServer) {
+                if (refreshFromServer) {
                     // 默认选择无标签的列表
                     $.ShanFox.ui.switchTag(null);
-                });
-            } else {
-                $('#tag-raw-size').text($.ShanFox.data.rawExtSize);
-                $.ShanFox.ui.tagList.render($.ShanFox.data.tags);
-                $.ShanFox.ui.switchTag($.ShanFox.ui.currentTag);
-            }
+                } else {
+                    // 从本地缓存加载，展示当前选择的标签页
+                    $.ShanFox.ui.switchTag($.ShanFox.ui.currentTag);
+                }
+            });
         },
         showMarket : function(market) {
+            $.ShanFox.ui.currentContent = 1;
             if ($.ShanFox.ui.currentMarket === market) {
                 return;
             }
@@ -916,6 +1151,9 @@ $.ShanFox = {
             var html = ejs.renderFile($.ShanFox.ui.template.marketContent, $.ShanFox.data.ejs, {cache:true});
             $('#page-right-content').html(html);
             // init market content
+            if (!$.ShanFox.ui.marketIFrame) {
+                $.ShanFox.ui.marketIFrame = new FullHeightIFrame('#market-iframe', '#page-right-content', 35);
+            }
             $.ShanFox.ui.marketIFrame.registerResizeListener();
             var marketUrl = $.ShanFox.data.marketUrl[$.ShanFox.ui.currentMarket];
             $.ShanFox.ui.marketIFrame.setContent(marketUrl);
@@ -944,6 +1182,22 @@ $.ShanFox = {
 
 // ========================== init logic [start] ========================== //
 $(function () {
+    $('#left-search-btn').click(function() {
+        if ($.ShanFox.ui.currentContent !== 0) {
+            shake($('#left-search'), 6, 10, 100);
+            return;
+        }
+        var inputComponent = $('#left-search-input');
+        var inputContent = inputComponent.val();
+        if (!inputContent) {
+            shake($('#left-search'), 6, 10, 100);
+            return;
+        }
+        inputComponent.val('');// 清空
+        $.ShanFox.ajax.extension.search(inputContent, function(result) {
+            $.ShanFox.ui.showSearchResult(inputContent, result);
+        });
+    });
     $('#left-market-chrome').click(function(){
         $.ShanFox.ui.showMarket('chrome');
     });
@@ -967,7 +1221,7 @@ $(function () {
     });
     var extensionMenu = $('#left-ext');
     extensionMenu.click(function(){
-        $.ShanFox.ui.showExtension(0);
+        $.ShanFox.ui.showExtension();
     });
     // default show extension
     extensionMenu.click();

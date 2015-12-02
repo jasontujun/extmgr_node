@@ -97,4 +97,16 @@ router.post('/removeTag', function(req, res) {
   })
 });
 
+router.get('/search', function(req, res) {
+  var keyword = req.query.keyword;
+  if (!keyword) {
+    res.status(400).end();
+    return;
+  }
+  dao.search(keyword, function(result) {
+    console.log(new Date().toString(), '@@@ /ext/search!keyword=' + keyword + ',return=' + result);
+    res.status(200).json({result:result});
+  })
+});
+
 module.exports = router;
