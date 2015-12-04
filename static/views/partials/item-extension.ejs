@@ -1,14 +1,16 @@
 <div class="box box-widget widget-user">
     <!-- extension bg image -->
-    <div class="widget-user-header bg-black" style="height: 140px;background-image: url(<%= image %>);
+    <div class="widget-user-header bg-black" style="height: 140px;padding: 0px;
+            background-image: url(<%= image %>);
             background-repeat: no-repeat;
             -webkit-background-size: contain;background-size: cover;">
-        <!--<h3 class="widget-user-username">Elizabeth Pierce</h3>-->
-        <!--<h5 class="widget-user-desc">Web Designer</h5>-->
+        <div class="sf-cover-description" style="height: 140px;opacity: 0">
+            <%= description %>
+        </div>
     </div>
     <div class="box-body">
         <!-- name -->
-        <div style="font-size: 20px"><%= name%></div>
+        <div class="sf-item-title"><%= name%></div>
         <div>
             <!-- tag -->
             <div class="btn-group">
@@ -20,7 +22,7 @@
                     <% for (var i = 0; i < tag.length; i++) { %>
                     <li style="position:relative">
                         <a><%= tag[i] %></a>
-                        <div style="position:absolute;right:10px;top:0px" class="pull-right">
+                        <div style="position:absolute;right:10px;top:0" class="pull-right">
                             <button type="button" class="btn btn-box-tool">
                                 <i class="fa fa-trash"></i>
                             </button>
@@ -30,9 +32,14 @@
                 </ul>
                 <% } %>
             </div>
-            <!-- size -->
-            <div class="pull-right">
-                <div style="display: inline-block; font-size: 18px"><%= size %></div>
+            <!-- userNum -->
+            <div class="pull-right" style="margin-top: 3px">
+                <div class="sf-item-text">
+                    <div class="sf-item-price">
+                        <%= price %>
+                    </div>
+                    评分:<%= parseFloat(rate).toFixed(2) %> (<%= userNum %>)
+                </div>
             </div>
         </div>
     </div>

@@ -1,0 +1,41 @@
+<div class="sf-global-cover" id="ext-detail-cover">
+    <div class="sf-detail-box">
+        <!-- close button -->
+        <div class="sf-detail-close-button" id="ext-detail-close-btn">
+            <i class="fa fa-times"></i>
+        </div>
+        <!-- header -->
+        <div class="sf-detail-box-header">
+            <!-- icon -->
+            <div class="sf-detail-icon">
+                <div class="sf-detail-icon-bg">
+                    <img class="sf-detail-icon-img" src="<%= icon %>">
+                </div>
+            </div>
+            <!-- title and info -->
+            <div class="sf-detail-title-box">
+                <h1 class="sf-detail-title"><%= name %></h1>
+                <span class="sf-detail-author-box">
+                    <a target="_blank" class="sf-detail-author">由<%= author %>提供</a>
+                </span>
+                <span style="width: 806px;display: inline-block;">
+                    <span class="sf-detail-info-box">
+                        <span class="sf-detail-info-text">评分:<%= parseFloat(rate).toFixed(2) %></span>
+                        <span class="sf-detail-info-separator"></span>
+                        <span class="sf-detail-info-text"><%= catName %></span>
+                        <span class="sf-detail-info-separator"></span>
+                        <span class="sf-detail-info-text"><%= userNum %>位用户</span>
+                    </span>
+                </span>
+            </div>
+            <!-- download button -->
+            <div class="sf-detail-download-box">
+                <div class="sf-detail-download-button">下载</div>
+            </div>
+        </div>
+        <!-- body -->
+        <div class="sf-detail-body-box">
+
+        </div>
+    </div>
+</div>

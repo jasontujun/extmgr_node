@@ -767,6 +767,7 @@ $.ShanFox = {
             extensionContent: 'views/partials/content-extension.ejs',
             marketContent: 'views/partials/content-market.ejs',
             extItem : 'views/partials/item-extension.ejs',
+            extDetail : 'views/partials/detail-extension.ejs',
             tagItem : 'views/partials/item-tag.ejs',
             loading : 'views/partials/list-loading.ejs',
             inputDialog : 'views/partials/dialog-input.ejs'
@@ -871,6 +872,24 @@ $.ShanFox = {
                     colCount : 4,
                     httpFn : tag ? $.ShanFox.ajax.extension.getTaggedByPage : $.ShanFox.ajax.extension.getRawByPage,
                     itemCallback : function(data, itemView) {
+                        // init description appear when hover
+                        var bg = itemView.find('.widget-user-header');
+                        $(bg).hover(
+                            function() {
+                                var cover = $(this).children();
+                                cover.stop().animate({opacity: '1'},500);
+                            },
+                            function() {
+                                var cover = $(this).children();
+                                cover.stop().animate({opacity: '0'},500);
+                            });
+                        // init click
+                        bg.click(function(event) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            $.ShanFox.ui.showExtensionDetail(data);
+                        });
+                        // init tags in extension
                         var tagList = data.tag;
                         var lis = itemView.find('li');
                         for (var i = 0; i < lis.length; i++) {
@@ -959,6 +978,24 @@ $.ShanFox = {
                     loadingWord : 'loading...',
                     colCount : 4,
                     itemCallback : function(data, itemView) {
+                        // init description appear when hover
+                        var bg = itemView.find('.widget-user-header');
+                        $(bg).hover(
+                            function() {
+                                var cover = $(this).children();
+                                cover.stop().animate({opacity: '1'},500);
+                            },
+                            function() {
+                                var cover = $(this).children();
+                                cover.stop().animate({opacity: '0'},500);
+                            });
+                        // init click
+                        bg.click(function(event) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            $.ShanFox.ui.showExtensionDetail(data);
+                        });
+                        // init tags in extension
                         var tagList = data.tag;
                         var lis = itemView.find('li');
                         for (var i = 0; i < lis.length; i++) {
@@ -1042,7 +1079,7 @@ $.ShanFox = {
                 }
             }
         },
-        showExtension : function() {
+        showExtensionList : function() {
             $.ShanFox.ui.currentContent = 0;
             // left menu
             $.ShanFox.ui.clearLeftMenuActive();
@@ -1117,7 +1154,7 @@ $.ShanFox = {
                         });
                     },
                     selectFn : $.ShanFox.ui.switchTag,
-                    selectClass : 'sfhoverbox',
+                    selectClass : 'sf-hover-box',
                     draggable : true
                 });
             }
@@ -1157,6 +1194,21 @@ $.ShanFox = {
             $.ShanFox.ui.marketIFrame.registerResizeListener();
             var marketUrl = $.ShanFox.data.marketUrl[$.ShanFox.ui.currentMarket];
             $.ShanFox.ui.marketIFrame.setContent(marketUrl);
+        },
+        showExtensionDetail : function(extension) {
+            var html = ejs.renderFile($.ShanFox.ui.template.extDetail,
+                extension, {cache:true});
+            $(document.body).append(html);
+            $('#ext-detail-close-btn').click(function(event){
+                event.preventDefault();
+                event.stopPropagation();
+                $('#ext-detail-cover').remove();
+            });
+            $('#ext-detail-cover').click(function(event){
+                event.preventDefault();
+                event.stopPropagation();
+                $('#ext-detail-cover').remove();
+            });
         },
         showInputDialog : function(titile, message, btnTxt, okCallback, closeCallback) {
             $(document.body).append(ejs.renderFile($.ShanFox.ui.template.inputDialog,
@@ -1221,7 +1273,7 @@ $(function () {
     });
     var extensionMenu = $('#left-ext');
     extensionMenu.click(function(){
-        $.ShanFox.ui.showExtension();
+        $.ShanFox.ui.showExtensionList();
     });
     // default show extension
     extensionMenu.click();
