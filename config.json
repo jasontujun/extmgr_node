@@ -1,3 +1,5 @@
 {
-  "dir" : "H:/zzz"
+  "extensionDir" : "H:/zzz",
+  "redisHost":"192.168.1.100",
+  "redisPort":6060
 }
