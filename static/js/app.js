@@ -185,11 +185,10 @@ function ExpandListView(opt) {
  * UI Component. EditableListView
  * <pre>
  *     opt = {
- *          prefix:
- *          parentSelector:
- *          addBtnSelector:
- *          confirmBtnSelector:
- *          inputSelector:
+ *          parentSelector: [string]
+ *          inputSelector: [string]
+ *          inputCollapseSelector: [string]
+ *          itemDeleteSelector: [string] under item
  *          itemTemplate:
  *          addFn:
  *          removeFn:
@@ -205,11 +204,10 @@ function ExpandListView(opt) {
  */
 function EditableListView(opt) {
     opt = opt || {};
-    this.prefix = opt.prefix;
     this.parentSelector = opt.parentSelector;
-    this.addBtnSelector = opt.addBtnSelector;
-    this.confirmBtnSelector = opt.confirmBtnSelector;
     this.inputSelector = opt.inputSelector;
+    this.inputCollapseSelector = opt.inputCollapseSelector;
+    this.itemDeleteSelector = opt.itemDeleteSelector;
     this.itemTemplate = opt.itemTemplate;
     this.addFn = opt.addFn;
     this.removeFn = opt.removeFn;
@@ -222,26 +220,25 @@ function EditableListView(opt) {
     this.render = function (tags) {
         if (!tags) return;
         // generate html
-        var index = 0;
+        var dataArray = [];
         var content = '';
         for (var tag in tags) {
+            dataArray.push(tag);
             var html = ejs.renderFile(this.itemTemplate, {
-                itemId : this.prefix + '-item-id-' + index,
-                removeBtnId : this.prefix + '-item-remove-id-' + index,
                 tag : tag,
                 tagCount: tags[tag]
             }, {cache:true});
             content = content + html;
-            index++;
         }
-        $(this.parentSelector).html(content);
+        var parent = $(this.parentSelector);
+        parent.html(content);
         // register draggable, select, remove listener
         var that = this;
-        index = 0;
-        for (var tag2 in tags) {
-            var item = $('#' + this.prefix + '-item-id-' + index);
+        var items = parent.children();
+        for (var i = 0; i < items.length; i++) {
+            var item = $(items[i]);
             if (this.draggable) {// set draggable
-                item.data('data', tag2);
+                item.data('data', dataArray[i]);
                 item.draggable({
                     scope : this.draggable_scope ? this.draggable_scope : 'default',
                     zIndex: 1070,
@@ -265,8 +262,8 @@ function EditableListView(opt) {
                             if (that.selectClass) {
                                 element.addClass(that.selectClass);
                             }
-                            if (that.draggable_end) {
-                                that.draggable_end(event, ui);
+                            if (that.draggable_stop) {
+                                that.draggable_stop(event, ui);
                             }
                         }
                     }(item)
@@ -275,12 +272,14 @@ function EditableListView(opt) {
             if (this.selectClass) {// set clickable cursor when hover
                 item.addClass(this.selectClass);
             }
-            if (this.selectFn) {//  set selectFn
-                item.click(tag2, function (event) {
+            // select listener
+            if (this.selectFn) {// set selectFn
+                item.click(item.data('data'), function (event) {
                     that.selectFn(event.data);
                 });
             }
-            $('#' + this.prefix + '-item-remove-id-' + index).click(tag2, function (event) {
+            // remove listener
+            item.find(this.itemDeleteSelector).click(item.data('data'), function (event) {
                 event.preventDefault();
                 event.stopPropagation();
                 var element = $(this);
@@ -293,57 +292,45 @@ function EditableListView(opt) {
                     });
                 }
             });
-            index++;
         }
     };
-    this.registerClickListener = function() {
+    this.init = function() {
+        // init addTag Listener
         var that = this;
-        $(this.addBtnSelector).click(function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            var element = $(this);
-            var box = element.parents(".box").first();
-            //Find the body and the footer
-            var box_content = box.find("> .box-body > .box-body");
-            if (!box.hasClass("collapsed-subbox")) {
-                //Convert minus into plus
-                element.children(":first")
-                    .removeClass('fa-angle-up')
-                    .addClass('fa-edit');
-                //Hide the content
-                box_content.slideUp($.AdminLTE.boxWidget.animationSpeed, function () {
-                    box.addClass("collapsed-subbox");
-                });
-            } else {
-                //Convert plus into minus
-                element.children(":first")
-                    .removeClass('fa-edit')
-                    .addClass('fa-angle-up');
-                //Show the content
-                box_content.slideDown($.AdminLTE.boxWidget.animationSpeed, function () {
-                    box.removeClass("collapsed-subbox");
-                });
-            }
-        });
-        $(this.confirmBtnSelector).click(function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            var inputComponent = $(that.inputSelector);
-            var inputTag = inputComponent.val();
-            inputComponent.val('');// 清空
-            // invoke addFn
-            if (that.addFn) {
-                that.addFn(inputTag, function(newTags) {
-                    if (newTags) {
-                        // render new tagList
-                        that.render(newTags);
+        var inputCollapse = $(this.inputCollapseSelector);
+        var inputComponent = $(this.inputSelector);
+        inputComponent.keydown(function (event) {
+            switch (event.which) {
+                case 13:
+                    var inputTag = inputComponent.val();
+                    if (!inputTag) {// cannot input empty tag
+                        shake(inputComponent, 6, 10, 100);
+                    } else {
+                        // invoke addFn
+                        if (that.addFn) {
+                            that.addFn(inputTag, function(newTags) {
+                                inputComponent.val('');// 清空
+                                if (newTags) {
+                                    // render new tagList
+                                    that.render(newTags);
+                                }
+                                // 触发add-btn的点击事件，使添加的控件收缩回去
+                                if (inputCollapse) {
+                                    inputCollapse.click();
+                                }
+                            });
+                        }
                     }
-                    // 触发add-btn的点击事件，使添加的控件收缩回去
-                    $(that.addBtnSelector).click()
-                });
+                    break;
+                case 27:
+                case 53:
+                    if (inputCollapse) {
+                        inputCollapse.click();
+                    }
+                    break;
             }
         });
-    }
+    };
 }
 
 /**
@@ -767,10 +754,10 @@ $.ShanFox = {
             extensionContent: 'views/partials/content-extension.ejs',
             marketContent: 'views/partials/content-market.ejs',
             extItem : 'views/partials/item-extension.ejs',
-            extDetail : 'views/partials/detail-extension.ejs',
             tagItem : 'views/partials/item-tag.ejs',
-            loading : 'views/partials/list-loading.ejs',
-            inputDialog : 'views/partials/dialog-input.ejs'
+            extDetail : 'views/partials/detail-extension.ejs',
+            extDetailTags : 'views/partials/detail-tags.ejs',
+            loading : 'views/partials/list-loading.ejs'
         },
 
         // ========================== ui widget [start] ========================== //
@@ -887,7 +874,7 @@ $.ShanFox = {
                         bg.click(function(event) {
                             event.preventDefault();
                             event.stopPropagation();
-                            $.ShanFox.ui.showExtensionDetail(data);
+                            $.ShanFox.ui.showExtensionDetail(data, listView);
                         });
                         // init tags in extension
                         var tagList = data.tag;
@@ -993,7 +980,7 @@ $.ShanFox = {
                         bg.click(function(event) {
                             event.preventDefault();
                             event.stopPropagation();
-                            $.ShanFox.ui.showExtensionDetail(data);
+                            $.ShanFox.ui.showExtensionDetail(data, $.ShanFox.ui.searchList);
                         });
                         // init tags in extension
                         var tagList = data.tag;
@@ -1092,11 +1079,10 @@ $.ShanFox = {
             // init extension list
             if (!$.ShanFox.ui.tagList) {
                 $.ShanFox.ui.tagList = new EditableListView({
-                    prefix: 'tagged-tag-list',
                     parentSelector : '#tag-list',
-                    addBtnSelector : '#tag-add-btn',
-                    confirmBtnSelector : '#tag-add-confirm-btn',
                     inputSelector : '#tag-input',
+                    inputCollapseSelector : '#tag-input-collapse',
+                    itemDeleteSelector: 'button',
                     itemTemplate : $.ShanFox.ui.template.tagItem,
                     addFn : function(inputTag, callback) {
                         $.ShanFox.ajax.tag.add(inputTag, function(result) {
@@ -1154,11 +1140,11 @@ $.ShanFox = {
                         });
                     },
                     selectFn : $.ShanFox.ui.switchTag,
-                    selectClass : 'sf-hover-box',
+                    selectClass : 'sf-hover-pointer',
                     draggable : true
                 });
             }
-            $.ShanFox.ui.tagList.registerClickListener();
+            $.ShanFox.ui.tagList.init();
             $('#tag-raw').click(function() {
                 $.ShanFox.ui.switchTag(null);
             });
@@ -1195,37 +1181,93 @@ $.ShanFox = {
             var marketUrl = $.ShanFox.data.marketUrl[$.ShanFox.ui.currentMarket];
             $.ShanFox.ui.marketIFrame.setContent(marketUrl);
         },
-        showExtensionDetail : function(extension) {
+        showExtensionDetail : function(extension, listView) {
             var html = ejs.renderFile($.ShanFox.ui.template.extDetail,
                 extension, {cache:true});
             $(document.body).append(html);
-            $('#ext-detail-close-btn').click(function(event){
+            $('#ext-detail-close-btn').click(function(event) {
                 event.preventDefault();
                 event.stopPropagation();
                 $('#ext-detail-cover').remove();
             });
-            $('#ext-detail-cover').click(function(event){
-                event.preventDefault();
-                event.stopPropagation();
-                $('#ext-detail-cover').remove();
+            // auto slide
+            $('#ext-detail-slider').carousel();
+            // show tags of this extension
+            var tags = $('#ext-detail-tags');
+            $.ShanFox.ui.showDetailTags(tags, extension, listView);
+            // init tag addBtn
+            var addTagBox = $('#ext-detail-add-tag');
+            var boxCollapse = addTagBox.find('.box-header');
+            var inputComponent = addTagBox.find('input');
+            inputComponent.keydown(function(event) {
+                switch (event.which) {
+                    case 13:
+                        var inputTag = inputComponent.val();
+                        if (!inputTag) {// cannot input empty tag
+                            shake(addTagBox, 6, 10, 100);
+                        } else {
+                            $.ShanFox.ajax.extension.addTag(extension.id, inputTag,
+                                function(result, rawChange) {
+                                    if (result) {
+                                        inputComponent.val('');// 清空
+                                        $.ShanFox.ui.showDetailTags(tags, extension, listView);// refresh item
+                                        listView.refreshItem(data);
+                                        $.ShanFox.ui.showTagList(true);
+                                        $.ShanFox.ui.clearLocalCacheLazy(inputTag);
+                                        if (rawChange) {
+                                            $.ShanFox.ui.clearLocalCacheLazy(null);
+                                        }
+                                    } else {
+                                        shake(addTagBox, 6, 10, 100);
+                                    }
+                                });
+                        }
+                        break;
+                    case 27:
+                    case 53:
+                        boxCollapse.click();
+                        break;
+                }
             });
+            //$('#ext-detail-cover').click(function(event){
+            //    event.preventDefault();
+            //    event.stopPropagation();
+            //    $('#ext-detail-cover').remove();
+            //});
         },
-        showInputDialog : function(titile, message, btnTxt, okCallback, closeCallback) {
-            $(document.body).append(ejs.renderFile($.ShanFox.ui.template.inputDialog,
-                {title:titile, message:message, btnTxt:btnTxt}, {cache:true}));
-            $('#dialog-ok-btn').click(function(){
-                var input = $('#dialog-input').val();
-                $('#input-dialog').remove();// 必须是remove..
-                if (okCallback) {
-                    okCallback(input);
-                }
-            });
-            $('#dialog-close-btn').click(function(){
-                $('#input-dialog').remove();// 必须是remove..
-                if (closeCallback) {
-                    closeCallback();
-                }
-            });
+        showDetailTags: function(parent, extension, listView) {
+            if (!parent) {
+                return;
+            }
+            var html = ejs.renderFile($.ShanFox.ui.template.extDetailTags,
+                extension, {cache:true});
+            parent.html(html);
+            // init tag deleteBtn
+            var lis = parent.find('.label-default');
+            for (var i = 0; i < lis.length; i++) {
+                var deleteBtn = $(lis[i]).find('.fa-trash');
+                deleteBtn.click(extension.tag[i], function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    $.ShanFox.ajax.extension.removeTag(extension.id, event.data,
+                        function(result, rawChange) {
+                            if (result) {
+                                // refresh item
+                                $.ShanFox.ui.showDetailTags(parent, extension, listView);
+                                if (listView) {
+                                    listView.refreshItem(extension);
+                                }
+                                $.ShanFox.ui.showTagList(true);
+                                $.ShanFox.ui.clearLocalCacheLazy(event.data);
+                                if (rawChange) {
+                                    $.ShanFox.ui.clearLocalCacheLazy(null);
+                                }
+                            } else {
+                                alert('给扩展[' + extension.name + ']添加标签[' + event.data + ']失败!');
+                            }
+                        });
+                });
+            }
         }
         // ========================== ui function [end] ========================== //
     }
@@ -1273,10 +1315,12 @@ $(function () {
     });
     var extensionMenu = $('#left-ext');
     extensionMenu.click(function(){
-        $.ShanFox.ui.showExtensionList();
+        if ($.ShanFox.ui.currentContent !== 0) {
+            $.ShanFox.ui.showExtensionList();
+        }
     });
     // default show extension
-    extensionMenu.click();
+    $.ShanFox.ui.showExtensionList();
 });
 // ========================== init logic [end] ========================== //
 

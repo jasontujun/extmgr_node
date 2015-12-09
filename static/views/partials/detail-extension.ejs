@@ -1,5 +1,5 @@
 <div class="sf-global-cover" id="ext-detail-cover">
-    <div class="sf-detail-box">
+    <div class="absolute-center sf-detail-box">
         <!-- close button -->
         <div class="sf-detail-close-button" id="ext-detail-close-btn">
             <i class="fa fa-times"></i>
@@ -35,7 +35,88 @@
         </div>
         <!-- body -->
         <div class="sf-detail-body-box">
-
+            <!-- tab -->
+            <div class="sf-detail-tab-bar">
+                <div class="sf-detail-tab-box sf-detail-tab-Fa-box">
+                    <div class="sf-detail-tab-text-box">
+                        <div class="sf-detail-tab-text">
+                            概述
+                        </div>
+                    </div>
+                </div>
+                <div class="sf-detail-tab-box">
+                    <div class="sf-detail-tab-text-box">
+                        <div class="sf-detail-tab-text">
+                            评价
+                        </div>
+                    </div>
+                </div>
+                <div class="sf-detail-tab-end-box"></div>
+            </div>
+            <!-- content -->
+            <div>
+                <!-- tab1 概述 -->
+                <div class="sf-detail-intro-box">
+                    <!-- slide -->
+                    <div class="carousel slide sf-detail-intro-slider-box" id="ext-detail-slider" data-ride="carousel">
+                        <!-- indicators -->
+                        <div class="carousel-indicators sf-detail-intro-slider-indicator-box" id="ext-detail-slider-indicator">
+                            <% for (var i = 0; i < screenshot.length; i++) { %>
+                            <div class="sf-detail-intro-slider-indicator-dot-box<%= (i == 0) ? ' active' : ''%>"
+                                 data-target="#ext-detail-slider" data-slide-to="<%= i %>">
+                                <div class="sf-detail-intro-slider-indicator-dot"></div>
+                            </div>
+                            <% } %>
+                        </div>
+                        <!-- screen-shots -->
+                        <div class="carousel-inner" role="listbox">
+                            <% for (var j = 0; j < screenshot.length; j++) { %>
+                            <div class="item<%= (j == 0) ? ' active' : ''%>">
+                                <img src="<%= screenshot[j] %>" width="640px" height="400px" border="none">
+                            </div>
+                            <% } %>
+                        </div>
+                    </div>
+                    <!-- word -->
+                    <div class="sf-detail-intro-word-box">
+                        <!-- tags -->
+                        <div class="sf-detail-intro-word-tag-box">
+                            <div class="box collapsed-box sf-detail-intro-word-add-tag-box" id="ext-detail-add-tag">
+                                <div class="box-header label sf-detail-intro-word-add-tag sf-hover-pointer" data-widget="collapse">
+                                    新标签
+                                    <i class="fa fa-plus" style="margin-left: 5px; font-size: 14px;"></i>
+                                </div>
+                                <div class="box-body" style="display: none;">
+                                    <input type="text" placeholder="输入标签,回车确认..." class="form-control">
+                                </div>
+                            </div>
+                            <div id="ext-detail-tags">
+                            </div>
+                        </div>
+                        <!-- separator -->
+                        <hr class="sf-detail-intro-word-separator">
+                        <!-- description -->
+                        <div class="sf-detail-intro-word-des-box">
+                            <div class="sf-detail-intro-word-brief-des-box">
+                                <%= description %>
+                            </div>
+                            <!--<div class="sf-detail-intro-word-full-des-box">-->
+                            <!--</div>-->
+                        </div>
+                        <!-- meta info -->
+                        <div class="sf-detail-intro-word-meta-box">
+                            <!-- separator -->
+                            <hr class="sf-detail-intro-word-separator">
+                            <div class="sf-detail-intro-word-meta-info">
+                                <span>版本：</span>&nbsp;<span style="font-weight: bold">XX.XX.XX</span><br>
+                                <span>最后更新日期：</span>&nbsp;<span style="font-weight: bold">XX年X月X日</span><br>
+                                <span>大小：</span>&nbsp;<span style="font-weight: bold">XXKB</span><br>
+                                <span>语言：</span>&nbsp;<span style="font-weight: bold">XX</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
