@@ -457,7 +457,8 @@ $.ShanFox = {
          *   ...
          * }
          */
-        tags: null
+        tags: null,
+        tagArray: []
     },
     ajax : {
         tag : {
@@ -473,6 +474,7 @@ $.ShanFox = {
                                 $.ShanFox.data.tags = {};
                             }
                             $.ShanFox.data.tags[tag] = 0;
+                            $.ShanFox.data.tagArray.push(tag);
                         }
                         if (callback) {
                             callback(result);
@@ -512,6 +514,10 @@ $.ShanFox = {
                             if ($.ShanFox.data.tags) {
                                 delete $.ShanFox.data.tags[tag];
                                 delete $.ShanFox.data.taggedExtension[tag];
+                                var index2 = $.ShanFox.data.tagArray.indexOf(tag);
+                                if (index2 != -1) {
+                                    $.tagArray.data.tagArray.splice(index2, 1);
+                                }
                             }
                         }
                         if (callback) {
@@ -529,6 +535,10 @@ $.ShanFox = {
             getAll : function(callback) {
                 $.getJSON('tag/getAll', {withRaw : true}, function(data) {
                     $.ShanFox.data.tags = data.tags;
+                    $.ShanFox.data.tagArray.length = 0;
+                    for (var tag in $.ShanFox.data.tags) {
+                        $.ShanFox.data.tagArray.push(tag);
+                    }
                     $.ShanFox.data.rawExtSize = data.raw ? data.raw : 0;
                     if (callback) {
                         callback(data.tags);
@@ -1195,7 +1205,7 @@ $.ShanFox = {
             // show tags of this extension
             var tags = $('#ext-detail-tags');
             $.ShanFox.ui.showDetailTags(tags, extension, listView);
-            // init tag addBtn
+            // 按回车确认添加
             var addTagBox = $('#ext-detail-add-tag');
             var boxCollapse = addTagBox.find('.box-header');
             var inputComponent = addTagBox.find('input');
@@ -1211,7 +1221,7 @@ $.ShanFox = {
                                     if (result) {
                                         inputComponent.val('');// 清空
                                         $.ShanFox.ui.showDetailTags(tags, extension, listView);// refresh item
-                                        listView.refreshItem(data);
+                                        listView.refreshItem(extension);
                                         $.ShanFox.ui.showTagList(true);
                                         $.ShanFox.ui.clearLocalCacheLazy(inputTag);
                                         if (rawChange) {
@@ -1228,6 +1238,10 @@ $.ShanFox = {
                         boxCollapse.click();
                         break;
                 }
+            });
+            // 输入框的自动匹配
+            inputComponent.autocomplete({
+                lookup: $.ShanFox.data.tagArray
             });
             //$('#ext-detail-cover').click(function(event){
             //    event.preventDefault();
