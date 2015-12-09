@@ -516,7 +516,7 @@ $.ShanFox = {
                                 delete $.ShanFox.data.taggedExtension[tag];
                                 var index2 = $.ShanFox.data.tagArray.indexOf(tag);
                                 if (index2 != -1) {
-                                    $.tagArray.data.tagArray.splice(index2, 1);
+                                    $.ShanFox.data.tagArray.splice(index2, 1);
                                 }
                             }
                         }
