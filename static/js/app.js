@@ -226,7 +226,7 @@ function EditableListView(opt) {
             dataArray.push(tag);
             var html = ejs.renderFile(this.itemTemplate, {
                 tag : tag,
-                tagCount: tags[tag]
+                tagCount: tags[tag].size
             }, {cache:true});
             content = content + html;
         }
@@ -452,8 +452,8 @@ $.ShanFox = {
         /**
          * 所有tag的集合
          * tags = {
-         *   '购物': 112,
-         *   '娱乐'：12344，
+         *   '购物': {name:'购物', size:112, createdTime:1433593929, order:0},
+         *   '娱乐'：{name:'娱乐', size:12344, createdTime:1433553337, order:0}，
          *   ...
          * }
          */
@@ -473,7 +473,12 @@ $.ShanFox = {
                             if(!$.ShanFox.data.tags) {
                                 $.ShanFox.data.tags = {};
                             }
-                            $.ShanFox.data.tags[tag] = 0;
+                            $.ShanFox.data.tags[tag] = {
+                                name:tag,
+                                size:0,
+                                createdTime:new Date().getTime(),
+                                order:$.ShanFox.data.tagArray.length
+                            };
                             $.ShanFox.data.tagArray.push(tag);
                         }
                         if (callback) {
@@ -685,11 +690,11 @@ $.ShanFox = {
                     }
                 });
             },
-            addTag : function(extId, tag, callback) {
+            addTag : function(extId, tag, force, callback) {
                 $.ajax({
                     url: 'ext/addTag',
                     type: 'POST',
-                    data: {ext : extId, tag : tag},
+                    data: {ext : extId, tag : tag, force : force},
                     success: function(data, textStatus, xhr) {
                         var result = data && data.result;
                         var rawChange = false;
@@ -719,11 +724,11 @@ $.ShanFox = {
                     }
                 });
             },
-            removeTag : function(extId, tag, callback) {
+            removeTag : function(extId, tag, force, callback) {
                 $.ajax({
                     url: 'ext/removeTag',
                     type: 'POST',
-                    data: {ext : extId, tag : tag},
+                    data: {ext : extId, tag : tag, force : force},
                     success: function(data, textStatus, xhr) {
                         var result = data && data.result;
                         var rawChange = false;
@@ -855,7 +860,7 @@ $.ShanFox = {
                 $('#header-selected-tag').html('空标签(请拖动标签到扩展里以添加)'
                 + '  <small>共' + $.ShanFox.data.rawExtSize + '个</small>');
             } else {
-                $('#header-selected-tag').html(tag + '  <small>共' + $.ShanFox.data.tags[tag] + '个</small>');
+                $('#header-selected-tag').html(tag + '  <small>共' + $.ShanFox.data.tags[tag].size + '个</small>');
             }
             var listView = tag ? $.ShanFox.ui.extensionList[tag] : $.ShanFox.ui.rawList;
             var dataList = tag ? $.ShanFox.data.taggedExtension[tag] : $.ShanFox.data.rawExtension;
@@ -894,7 +899,7 @@ $.ShanFox = {
                             deleteBtn.click(tagList[i], function(event) {
                                 event.preventDefault();
                                 event.stopPropagation();
-                                $.ShanFox.ajax.extension.removeTag(data.id, event.data,
+                                $.ShanFox.ajax.extension.removeTag(data.id, event.data, false,
                                     function(result, rawChange) {
                                         if (result) {
                                             listView.refreshItem(data);
@@ -924,7 +929,7 @@ $.ShanFox = {
                             btn.removeClass('open');
                         } else {
                             var extId = data.id;
-                            $.ShanFox.ajax.extension.addTag(extId, dragTag,
+                            $.ShanFox.ajax.extension.addTag(extId, dragTag, false,
                                 function(result, rawChange) {
                                     if (result) {
                                         listView.refreshItem(data);
@@ -1000,7 +1005,7 @@ $.ShanFox = {
                             deleteBtn.click(tagList[i], function(event) {
                                 event.preventDefault();
                                 event.stopPropagation();
-                                $.ShanFox.ajax.extension.removeTag(data.id, event.data,
+                                $.ShanFox.ajax.extension.removeTag(data.id, event.data, false,
                                     function(result, rawChange) {
                                         if (result) {
                                             $.ShanFox.ui.searchList.refreshItem(data);
@@ -1030,7 +1035,7 @@ $.ShanFox = {
                             btn.removeClass('open');
                         } else {
                             var extId = data.id;
-                            $.ShanFox.ajax.extension.addTag(extId, dragTag,
+                            $.ShanFox.ajax.extension.addTag(extId, dragTag, false,
                                 function(result, rawChange) {
                                     if (result) {
                                         $.ShanFox.ui.searchList.refreshItem(data);
@@ -1216,7 +1221,7 @@ $.ShanFox = {
                         if (!inputTag) {// cannot input empty tag
                             shake(addTagBox, 6, 10, 100);
                         } else {
-                            $.ShanFox.ajax.extension.addTag(extension.id, inputTag,
+                            $.ShanFox.ajax.extension.addTag(extension.id, inputTag, true,
                                 function(result, rawChange) {
                                     if (result) {
                                         inputComponent.val('');// 清空
@@ -1263,7 +1268,7 @@ $.ShanFox = {
                 deleteBtn.click(extension.tag[i], function(event) {
                     event.preventDefault();
                     event.stopPropagation();
-                    $.ShanFox.ajax.extension.removeTag(extension.id, event.data,
+                    $.ShanFox.ajax.extension.removeTag(extension.id, event.data, true,
                         function(result, rawChange) {
                             if (result) {
                                 // refresh item

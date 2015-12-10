@@ -360,7 +360,7 @@
 
 .sf-detail-intro-word-box {
     width: 260px;
-    height: 431px;
+    height: 400px;
     padding-left: 23px;
     display: inline-block;
     position: absolute;
@@ -403,8 +403,6 @@
 }
 
 .sf-detail-intro-word-des-box {
-    max-height: 275px;
-    overflow-y: auto;
     overflow-x: hidden;
     padding-right: 20px;
 }
@@ -424,14 +422,9 @@
     word-wrap: break-word;
 }
 
-.sf-detail-intro-word-meta-box {
-    max-height: 135px;
-    overflow: auto;
-    padding-right: 20px;
-}
-
 .sf-detail-intro-word-meta-info {
     font-size: 11px;
     line-height: 18px;
     margin-top: 3px;
+    padding-right: 20px;
 }

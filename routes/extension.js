@@ -74,12 +74,14 @@ router.get('/raw/getAllByPage', function(req, res) {
 router.post('/addTag', function(req, res) {
   var tag = req.body.tag;
   var extId = req.body.ext;
+  var force = req.body.force || false;
   if (!tag || !extId) {
     res.status(400).end();
     return;
   }
-  dao.addTagForExt(tag, extId, function(result) {
-    console.log(new Date().toString(), '@@@ /ext/addTag!tag=' + tag + ',extId=' + extId + ',return=' + result);
+  dao.addTagForExt(tag, extId, force, function(result) {
+    console.log(new Date().toString(), '@@@ /ext/addTag!tag=' + tag +
+    ',extId=' + extId + ',force=' + force + ',return=' + result);
     res.status(200).json({result:result});
   })
 });
@@ -87,12 +89,14 @@ router.post('/addTag', function(req, res) {
 router.post('/removeTag', function(req, res) {
   var tag = req.body.tag;
   var extId = req.body.ext;
+  var force = req.body.force || false;
   if (!tag || !extId) {
     res.status(400).end();
     return;
   }
-  dao.removeTagForExt(tag, extId, function(result) {
-    console.log(new Date().toString(), '@@@ /ext/removeTag!tag=' + tag + ',extId=' + extId + ',return=' + result);
+  dao.removeTagForExt(tag, extId, force, function(result) {
+    console.log(new Date().toString(), '@@@ /ext/removeTag!tag=' + tag +
+    ',extId=' + extId + ',force=' + force + ',return=' + result);
     res.status(200).json({result:result});
   })
 });
