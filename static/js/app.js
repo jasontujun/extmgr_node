@@ -12,8 +12,9 @@
  *          loadingTemplate:
  *          loadingWord:
  *          colCount: [number]
- *          httpFn: [function(callbcak([Object]data, [boolean]hasMore))] the ajax function to get more data.
- *          itemCallback: [function([Object]data, [Object]itemView] callback when item view created.
+ *          loadMoreFn: [function(callbcak([Object]data, [boolean]hasMore))] the ajax function to get mor
+ *          itemCallback: [function([Object]data, [Object]itemView] callback when item view created.e data.
+ *          refreshPartCallback: [function([Object]data, [Object]itemView] callback when call refreshPartOfItem().
  *          draggable: [boolean]
  *          droppable: [boolean]
  *          droppable_hover: [string]
@@ -33,8 +34,9 @@ function ExpandListView(opt) {
     this.loadingTemplate = opt.loadingTemplate;
     this.loadingWord = opt.loadingWord;
     this.colCount = opt.colCount || 1;
-    this.httpFn = opt.httpFn;
+    this.loadMoreFn = opt.loadMoreFn;
     this.itemCallback = opt.itemCallback;
+    this.refreshPartCallback = opt.refreshPartCallback;
     this.draggable = opt.draggable;
     this.droppable = opt.droppable;
     this.droppable_hover = opt.droppable_hover;
@@ -43,12 +45,12 @@ function ExpandListView(opt) {
     this.droppable_over = opt.droppable_over;
     this.droppable_out= opt.droppable_out;
 
-    this.more = !!opt.httpFn;// 如果没有加载更多的方法，则默认不能加载更多
+    this.more = !!opt.loadMoreFn;// 如果没有加载更多的方法，则默认不能加载更多
     this.loading = false;
     this.scrollListener = null;
 
     this.loadMore = function () {
-        if (!this.more || this.loading || !this.httpFn) {
+        if (!this.more || this.loading || !this.loadMoreFn) {
             return;
         }
         this.loading = true;
@@ -59,7 +61,7 @@ function ExpandListView(opt) {
         }
         loadingTip.show();
         var that = this;
-        this.httpFn(function (data, hasMore) {
+        this.loadMoreFn(function (data, hasMore) {
             if (!hasMore) {
                 that.more = false;
                 //$('#list-loading-word').text('no more data');
@@ -113,7 +115,17 @@ function ExpandListView(opt) {
             this.itemCallback(data, itemView);
         }
     };
-    this.refreshItem = function(data) {
+    this.refreshPartOfItem = function(data) {
+        var itemView = $('#expandlist-item-' + data.id);
+        if (!itemView) {
+            return;
+        }
+        // callback
+        if (this.refreshPartCallback) {
+            this.refreshPartCallback(data, itemView);
+        }
+    };
+    this.refreshEntireItem = function(data) {
         var itemView = $('#expandlist-item-' + data.id);
         if (!itemView) {
             return;
@@ -123,20 +135,20 @@ function ExpandListView(opt) {
         // init item
         this.initItem(data, itemView);
     };
-    this.render = function (data) {
-        if (!data || data.length <= 0) return;
+    this.render = function (datas) {
+        if (!datas || datas.length <= 0) return;
 
         var content = '';
         var index = 0;
-        var rowCount = Math.ceil(data.length / this.colCount);
+        var rowCount = Math.ceil(datas.length / this.colCount);
         for (var row = 0; row < rowCount; row++) {
             content = content + '<div class="row">';
             for (var i = 0; i < this.colCount; i++) {
-                if (index >= data.length) {
+                if (index >= datas.length) {
                     break;
                 }
-                var item = '<div class="col-lg-3 col-xs-6" id="expandlist-item-'+ data[index].id + '">' +
-                    ejs.renderFile(this.itemTemplate, data[index], {cache:true}) + '</div>';
+                var item = '<div class="col-lg-3 col-xs-6" id="expandlist-item-'+ datas[index].id + '">' +
+                    ejs.renderFile(this.itemTemplate, datas[index], {cache:true}) + '</div>';
                 content = content + item;
                 index++;
             }
@@ -150,8 +162,8 @@ function ExpandListView(opt) {
         $(this.loadingSelector).remove();// 必须是remove..
         $(this.parentSelector).append(content);
         // init item
-        for (var d = 0; d < data.length; d++) {
-            this.initItem(data[d], $('#expandlist-item-' + data[d].id));
+        for (var d = 0; d < datas.length; d++) {
+            this.initItem(datas[d], $('#expandlist-item-' + datas[d].id));
         }
     };
     this.clear = function () {
@@ -166,7 +178,7 @@ function ExpandListView(opt) {
             // When scroll at bottom, invoked loadMore() function.
             if ($(window).scrollTop() + $(window).height() == $(document).height()) {
                 console.log(new Date().toString(), 'scroll bottom');
-                if (that.more && !that.loading && that.httpFn) {
+                if (that.more && !that.loading && that.loadMoreFn) {
                     console.log(new Date().toString(), 'loadMore!');
                     that.loadMore();
                 }
@@ -765,10 +777,12 @@ $.ShanFox = {
         currentMarket : null,// 当前选中的市场
         cacheRawClear : false,// 标识空标签的扩展数据缓存失效，需要重新向服务器请求
         cacheTagClear : {}, // 标识有标签的扩展数据缓存失效，需要重新向服务器请求
+        shiftPress : false,
         template : {
             extensionContent: 'views/partials/content-extension.ejs',
             marketContent: 'views/partials/content-market.ejs',
             extItem : 'views/partials/item-extension.ejs',
+            extItemTags : 'views/partials/item-extension-tags.ejs',
             tagItem : 'views/partials/item-tag.ejs',
             extDetail : 'views/partials/detail-extension.ejs',
             extDetailTags : 'views/partials/detail-tags.ejs',
@@ -847,6 +861,112 @@ $.ShanFox = {
             $('#left-market').removeClass('active');
             $('#left-market-menu').children().removeClass('active');
         },
+        createExtensionList : function(loadMoreFn) {
+            var itemTagsInit = function(data, itemView) {
+                var tagList = data.tag;
+                var lis = itemView.find('li');
+                for (var i = 0; i < lis.length; i++) {
+                    var deleteBtn = $(lis[i]).find('.btn');
+                    deleteBtn.click(tagList[i], function(event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        $.ShanFox.ajax.extension.removeTag(data.id, event.data, false,
+                            function(result, rawChange) {
+                                if (result) {
+                                    listView.refreshPartOfItem(data);
+                                    $.ShanFox.ui.showTagList(true);
+                                    $.ShanFox.ui.clearLocalCacheLazy(event.data);
+                                    if (rawChange) {
+                                        $.ShanFox.ui.clearLocalCacheLazy(null);
+                                    }
+                                } else {
+                                    alert('给扩展[' + data.name + ']添加标签[' + event.data + ']失败!');
+                                }
+                            });
+                    });
+                }
+            };
+            var listView = null;
+            var option = {
+                parentSelector : '#ext-list',
+                loadingSelector : '#list-loading',
+                itemTemplate : $.ShanFox.ui.template.extItem,
+                loadingTemplate : $.ShanFox.ui.template.loading,
+                loadingWord : 'loading...',
+                colCount : 4,
+                loadMoreFn : loadMoreFn,
+                refreshPartCallback : function(data, itemView) {
+                    var tagsBox = itemView.find('.btn-group');
+                    var tagsContent = ejs.renderFile($.ShanFox.ui.template.extItemTags, data, {cache:true});
+                    tagsBox.html(tagsContent);
+                    itemTagsInit(data, itemView);
+                },
+                itemCallback : function(data, itemView) {
+                    // init description appear when hover
+                    var bg = itemView.find('.widget-user-header');
+                    $(bg).hover(
+                        function() {
+                            var cover = $(this).children();
+                            cover.stop().animate({opacity: '1'},500);
+                        },
+                        function() {
+                            var cover = $(this).children();
+                            cover.stop().animate({opacity: '0'},500);
+                        });
+                    // init click
+                    bg.click(function(event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        $.ShanFox.ui.showExtensionDetail(data, listView);
+                    });
+                    // init tags in extension
+                    itemTagsInit(data, itemView);
+                },
+                droppable : true,
+                droppable_hover : 'bg-gray-active',
+                droppable_drop : function(draggableElement, droppableElement, data) {
+                    var dragTag = draggableElement.data('data');
+                    var extTags = data.tag ? data.tag : [];
+                    if (extTags.indexOf(dragTag) != -1) {
+                        // tag exist, cannot add again!
+                        //alert('扩展[' + data.name + ']已包含标签[' + tag + ']，不可重复添加!');
+                        shake(droppableElement, 6, 10, 100);
+                        var btn = droppableElement.find('.btn-group');
+                        btn.removeClass('open');
+                    } else {
+                        var extId = data.id;
+                        $.ShanFox.ajax.extension.addTag(extId, dragTag, false,
+                            function(result, rawChange) {
+                                if (result) {
+                                    listView.refreshPartOfItem(data);
+                                    if (!$.ShanFox.ui.shiftPress) {// 按住shift,连续添加
+                                        $.ShanFox.ui.showTagList(true);
+                                        $.ShanFox.ui.clearLocalCacheLazy(dragTag);
+                                        if (rawChange) {
+                                            $.ShanFox.ui.clearLocalCacheLazy(null);
+                                        }
+                                    }
+                                } else {
+                                    alert('给扩展[' + data.name + ']添加标签[' + dragTag + ']失败!');
+                                }
+                            });
+                    }
+                },
+                droppable_over : function(draggableElement, droppableElement, data) {
+                    var btn = droppableElement.find('.btn-group');
+                    btn.addClass('open');
+                    if ($.ShanFox.ui.shiftPress) {// 按住shift,连续添加
+                        option.droppable_drop(draggableElement, droppableElement, data);
+                    }
+                },
+                droppable_out : function(draggableElement, droppableElement, data) {
+                    var btn = droppableElement.find('.btn-group');
+                    btn.removeClass('open');
+                }
+            };
+            listView = new ExpandListView(option);
+            return listView;
+        },
         switchTag : function(tag) {
             $.ShanFox.ui.currentTag = tag;
             // 检查是否要清空缓存
@@ -865,94 +985,8 @@ $.ShanFox = {
             var listView = tag ? $.ShanFox.ui.extensionList[tag] : $.ShanFox.ui.rawList;
             var dataList = tag ? $.ShanFox.data.taggedExtension[tag] : $.ShanFox.data.rawExtension;
             if (!listView) {// new taggList for [tag]
-                listView = new ExpandListView({
-                    parentSelector : '#ext-list',
-                    loadingSelector : '#list-loading',
-                    itemTemplate : $.ShanFox.ui.template.extItem,
-                    loadingTemplate : $.ShanFox.ui.template.loading,
-                    loadingWord : 'loading...',
-                    colCount : 4,
-                    httpFn : tag ? $.ShanFox.ajax.extension.getTaggedByPage : $.ShanFox.ajax.extension.getRawByPage,
-                    itemCallback : function(data, itemView) {
-                        // init description appear when hover
-                        var bg = itemView.find('.widget-user-header');
-                        $(bg).hover(
-                            function() {
-                                var cover = $(this).children();
-                                cover.stop().animate({opacity: '1'},500);
-                            },
-                            function() {
-                                var cover = $(this).children();
-                                cover.stop().animate({opacity: '0'},500);
-                            });
-                        // init click
-                        bg.click(function(event) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            $.ShanFox.ui.showExtensionDetail(data, listView);
-                        });
-                        // init tags in extension
-                        var tagList = data.tag;
-                        var lis = itemView.find('li');
-                        for (var i = 0; i < lis.length; i++) {
-                            var deleteBtn = $(lis[i]).find('.btn');
-                            deleteBtn.click(tagList[i], function(event) {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                $.ShanFox.ajax.extension.removeTag(data.id, event.data, false,
-                                    function(result, rawChange) {
-                                        if (result) {
-                                            listView.refreshItem(data);
-                                            $.ShanFox.ui.showTagList(true);
-                                            $.ShanFox.ui.clearLocalCacheLazy(event.data);
-                                            if (rawChange) {
-                                                $.ShanFox.ui.clearLocalCacheLazy(null);
-                                            }
-                                        } else {
-                                            alert('给扩展[' + data.name + ']添加标签[' + event.data + ']失败!');
-                                        }
-                                    });
-                            });
-                        }
-                    },
-                    droppable : true,
-                    droppable_hover : 'bg-gray-active',
-                    droppable_drop : function(draggableElement, droppableElement, data) {
-                        console.log(new Date().toString(), '[droppable_drop] dataId:' + data.id + ',dataName:' + data.name);
-                        var dragTag = draggableElement.data('data');
-                        var extTags = data.tag ? data.tag : [];
-                        if (extTags.indexOf(dragTag) != -1) {
-                            // tag exist, cannot add again!
-                            //alert('扩展[' + data.name + ']已包含标签[' + tag + ']，不可重复添加!');
-                            shake(droppableElement, 6, 10, 100);
-                            var btn = droppableElement.find('.btn-group');
-                            btn.removeClass('open');
-                        } else {
-                            var extId = data.id;
-                            $.ShanFox.ajax.extension.addTag(extId, dragTag, false,
-                                function(result, rawChange) {
-                                    if (result) {
-                                        listView.refreshItem(data);
-                                        $.ShanFox.ui.showTagList(true);
-                                        $.ShanFox.ui.clearLocalCacheLazy(dragTag);
-                                        if (rawChange) {
-                                            $.ShanFox.ui.clearLocalCacheLazy(null);
-                                        }
-                                    } else {
-                                        alert('给扩展[' + data.name + ']添加标签[' + dragTag + ']失败!');
-                                    }
-                                });
-                        }
-                    },
-                    droppable_over : function(draggableElement, droppableElement, data) {
-                        var btn = droppableElement.find('.btn-group');
-                        btn.addClass('open');
-                    },
-                    droppable_out : function(draggableElement, droppableElement, data) {
-                        var btn = droppableElement.find('.btn-group');
-                        btn.removeClass('open');
-                    }
-                });
+                listView = $.ShanFox.ui.createExtensionList(tag ?
+                    $.ShanFox.ajax.extension.getTaggedByPage : $.ShanFox.ajax.extension.getRawByPage);
                 if (tag) {
                     $.ShanFox.ui.extensionList[tag] = listView;
                 } else {
@@ -972,93 +1006,7 @@ $.ShanFox = {
             $.ShanFox.ui.clearScrollListener();
             $('#header-selected-tag').html('搜索"' + keyword + '"的结果<small>共' + result.length + '个</small>');
             if (!$.ShanFox.ui.searchList) {
-                $.ShanFox.ui.searchList = new ExpandListView({
-                    parentSelector : '#ext-list',
-                    loadingSelector : '#list-loading',
-                    itemTemplate : $.ShanFox.ui.template.extItem,
-                    loadingTemplate : $.ShanFox.ui.template.loading,
-                    loadingWord : 'loading...',
-                    colCount : 4,
-                    itemCallback : function(data, itemView) {
-                        // init description appear when hover
-                        var bg = itemView.find('.widget-user-header');
-                        $(bg).hover(
-                            function() {
-                                var cover = $(this).children();
-                                cover.stop().animate({opacity: '1'},500);
-                            },
-                            function() {
-                                var cover = $(this).children();
-                                cover.stop().animate({opacity: '0'},500);
-                            });
-                        // init click
-                        bg.click(function(event) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            $.ShanFox.ui.showExtensionDetail(data, $.ShanFox.ui.searchList);
-                        });
-                        // init tags in extension
-                        var tagList = data.tag;
-                        var lis = itemView.find('li');
-                        for (var i = 0; i < lis.length; i++) {
-                            var deleteBtn = $(lis[i]).find('.btn');
-                            deleteBtn.click(tagList[i], function(event) {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                $.ShanFox.ajax.extension.removeTag(data.id, event.data, false,
-                                    function(result, rawChange) {
-                                        if (result) {
-                                            $.ShanFox.ui.searchList.refreshItem(data);
-                                            $.ShanFox.ui.showTagList(true);
-                                            $.ShanFox.ui.clearLocalCacheLazy(event.data);
-                                            if (rawChange) {
-                                                $.ShanFox.ui.clearLocalCacheLazy(null);
-                                            }
-                                        } else {
-                                            alert('给扩展[' + data.name + ']添加标签[' + event.data + ']失败!');
-                                        }
-                                    });
-                            });
-                        }
-                    },
-                    droppable : true,
-                    droppable_hover : 'bg-gray-active',
-                    droppable_drop : function(draggableElement, droppableElement, data) {
-                        console.log(new Date().toString(), '[droppable_drop] dataId:' + data.id + ',dataName:' + data.name);
-                        var dragTag = draggableElement.data('data');
-                        var extTags = data.tag ? data.tag : [];
-                        if (extTags.indexOf(dragTag) != -1) {
-                            // tag exist, cannot add again!
-                            //alert('扩展[' + data.name + ']已包含标签[' + tag + ']，不可重复添加!');
-                            shake(droppableElement, 6, 10, 100);
-                            var btn = droppableElement.find('.btn-group');
-                            btn.removeClass('open');
-                        } else {
-                            var extId = data.id;
-                            $.ShanFox.ajax.extension.addTag(extId, dragTag, false,
-                                function(result, rawChange) {
-                                    if (result) {
-                                        $.ShanFox.ui.searchList.refreshItem(data);
-                                        $.ShanFox.ui.showTagList(true);
-                                        $.ShanFox.ui.clearLocalCacheLazy(dragTag);
-                                        if (rawChange) {
-                                            $.ShanFox.ui.clearLocalCacheLazy(null);
-                                        }
-                                    } else {
-                                        alert('给扩展[' + data.name + ']添加标签[' + dragTag + ']失败!');
-                                    }
-                                });
-                        }
-                    },
-                    droppable_over : function(draggableElement, droppableElement, data) {
-                        var btn = droppableElement.find('.btn-group');
-                        btn.addClass('open');
-                    },
-                    droppable_out : function(draggableElement, droppableElement, data) {
-                        var btn = droppableElement.find('.btn-group');
-                        btn.removeClass('open');
-                    }
-                });
+                $.ShanFox.ui.searchList = $.ShanFox.ui.createExtensionList();
             }
             $.ShanFox.ui.searchList.clear();
             $.ShanFox.ui.searchList.render(result);
@@ -1214,6 +1162,7 @@ $.ShanFox = {
             var addTagBox = $('#ext-detail-add-tag');
             var boxCollapse = addTagBox.find('.box-header');
             var inputComponent = addTagBox.find('input');
+            // 输入框监听按键
             inputComponent.keydown(function(event) {
                 switch (event.which) {
                     case 13:
@@ -1226,7 +1175,7 @@ $.ShanFox = {
                                     if (result) {
                                         inputComponent.val('');// 清空
                                         $.ShanFox.ui.showDetailTags(tags, extension, listView);// refresh item
-                                        listView.refreshItem(extension);
+                                        listView.refreshPartOfItem(extension);
                                         $.ShanFox.ui.showTagList(true);
                                         $.ShanFox.ui.clearLocalCacheLazy(inputTag);
                                         if (rawChange) {
@@ -1248,11 +1197,13 @@ $.ShanFox = {
             inputComponent.autocomplete({
                 lookup: $.ShanFox.data.tagArray
             });
-            //$('#ext-detail-cover').click(function(event){
-            //    event.preventDefault();
-            //    event.stopPropagation();
-            //    $('#ext-detail-cover').remove();
-            //});
+            $('#ext-detail-cover').click(function(event){
+                if (event.target === event.currentTarget) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    $('#ext-detail-cover').remove();
+                }
+            });
         },
         showDetailTags: function(parent, extension, listView) {
             if (!parent) {
@@ -1274,7 +1225,7 @@ $.ShanFox = {
                                 // refresh item
                                 $.ShanFox.ui.showDetailTags(parent, extension, listView);
                                 if (listView) {
-                                    listView.refreshItem(extension);
+                                    listView.refreshPartOfItem(extension);
                                 }
                                 $.ShanFox.ui.showTagList(true);
                                 $.ShanFox.ui.clearLocalCacheLazy(event.data);
@@ -1295,6 +1246,22 @@ $.ShanFox = {
 
 // ========================== init logic [start] ========================== //
 $(function () {
+    $(document).keydown(function(event) {
+        switch (event.which) {
+            case 16:
+                console.log(new Date().toString(), 'key down shift!');
+                $.ShanFox.ui.shiftPress = true;
+                break;
+        }
+    });
+    $(document).keyup(function(event) {
+        switch (event.which) {
+            case 16:
+                console.log(new Date().toString(), 'key up shift!');
+                $.ShanFox.ui.shiftPress = false;
+                break;
+        }
+    });
     $('#left-search-btn').click(function() {
         if ($.ShanFox.ui.currentContent !== 0) {
             shake($('#left-search'), 6, 10, 100);

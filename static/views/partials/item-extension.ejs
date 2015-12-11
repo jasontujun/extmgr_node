@@ -14,23 +14,7 @@
         <div>
             <!-- tag -->
             <div class="btn-group">
-                <button type="button" class="btn btn-box-tool dropdown-toggle" data-toggle="dropdown">
-                    <i class="fa fa-tags"> <%= tag ? tag.length : 0 %></i>
-                </button>
-                <% if(tag && tag.length > 0) { %>
-                <ul class="dropdown-menu" role="menu">
-                    <% for (var i = 0; i < tag.length; i++) { %>
-                    <li style="position:relative">
-                        <a><%= tag[i] %></a>
-                        <div style="position:absolute;right:10px;top:0" class="pull-right">
-                            <button type="button" class="btn btn-box-tool">
-                                <i class="fa fa-trash"></i>
-                            </button>
-                        </div>
-                    </li>
-                    <% } %>
-                </ul>
-                <% } %>
+                <%- include('views/partials/item-extension-tags.ejs', {tag: tag}) %>
             </div>
             <!-- userNum -->
             <div class="pull-right" style="margin-top: 3px">
