@@ -1151,7 +1151,10 @@ $.ShanFox = {
             $('#ext-detail-close-btn').click(function(event) {
                 event.preventDefault();
                 event.stopPropagation();
-                $('#ext-detail-cover').remove();
+                var cover = $('#ext-detail-cover');
+                cover.stop().animate({opacity: '0'},500, function() {
+                    cover.remove();
+                });
             });
             // auto slide
             $('#ext-detail-slider').carousel();
@@ -1197,13 +1200,18 @@ $.ShanFox = {
             inputComponent.autocomplete({
                 lookup: $.ShanFox.data.tagArray
             });
-            $('#ext-detail-cover').click(function(event){
+            var cover = $('#ext-detail-cover');
+            cover.click(function(event){
                 if (event.target === event.currentTarget) {
                     event.preventDefault();
                     event.stopPropagation();
-                    $('#ext-detail-cover').remove();
+                    var cover = $('#ext-detail-cover');
+                    cover.stop().animate({opacity: '0'},500, function() {
+                        cover.remove();
+                    });
                 }
             });
+            cover.animate({opacity: '1'},500);
         },
         showDetailTags: function(parent, extension, listView) {
             if (!parent) {
@@ -1259,6 +1267,14 @@ $(function () {
             case 16:
                 console.log(new Date().toString(), 'key up shift!');
                 $.ShanFox.ui.shiftPress = false;
+                break;
+        }
+    });
+    // 输入框监听按键
+    $('#left-search-input').keydown(function(event) {
+        switch (event.which) {
+            case 13:
+                $('#left-search-btn').click();
                 break;
         }
     });
